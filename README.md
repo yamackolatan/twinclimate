@@ -1,26 +1,33 @@
-# TwinClimate 🌍
+# TwinClimate 🏃🚴🏊
 
-Ever wondered which city has the same weather as yours? TwinClimate compares
-the climates of two cities month by month and finds your city's **climate
-twin** — built with Flutter, runs in any web browser.
+Training-session weather for outdoor athletes. Tell it **where**, **when**
+and **how far** you're running, riding or swimming, and it answers with:
 
-| Compare two cities | Find your climate twin |
-| --- | --- |
-| ![Compare view](docs/screenshots/compare.png) | ![Find my twin view](docs/screenshots/find.png) |
+- an **hour-by-hour forecast for exactly your session window**, at the
+  exact coordinates of your training spot (a forest outside the city is
+  not the city centre);
+- a "**feels like at the start**" summary with sky, humidity and wind;
+- a **kit list** grouped by HEAD / TORSO / HANDS / LEGS / FEET, where
+  **every item explains why it's suggested** ("70% rain chance during your
+  session"). Rain- and wind-driven items are highlighted, and the list
+  doubles as a tap-to-pack checklist.
 
-## What it does
+Weather and place search come from [Open-Meteo](https://open-meteo.com)
+— free, no account, no API key. Favourite places and last-used settings
+are stored in the browser; nothing leaves the device.
 
-- **Compare cities** — pick any two of the 46 included world cities and see
-  their monthly temperatures and rainfall side by side, plus a **Twin Score**
-  from 0 (nothing alike) to 100 (identical climate).
-- **Find my climate twin** — pick your city and get every other city ranked
-  by how closely its climate matches. Cross-hemisphere twins are detected
-  too (Cape Town and Los Angeles match with their seasons offset by
-  6 months).
-- **°C / °F toggle**, and a layout that works on phones and desktops.
+Built with Flutter, runs in any web browser. Phone apps come later from
+the same codebase.
 
-Climate data is bundled with the app (approximate 1991–2020 climate
-normals), so it needs no account, no API key, and no server.
+## Roadmap
+
+1. ✅ **Quick Session** — conditions + kit advice for a planned session.
+2. **Target race** — save a race and get its 10-year climate fingerprint.
+3. **Race Matching** — find where and when, within travel range,
+   conditions best match race day.
+4. **Comfort profile** — the app learns whether you run hot or cold from
+   2-tap post-session feedback.
+5. **Packing reminder** — the kit checklist pings you the evening before.
 
 ## See it in your browser (GitHub Pages)
 
@@ -42,7 +49,8 @@ to GitHub Pages automatically. One-time setup:
 
 ```bash
 flutter pub get
-flutter test
+flutter test       # gear engine, session window and app-flow tests
+flutter analyze
 flutter run -d chrome            # debug, hot reload
 # or a production build:
 flutter build web --release --no-web-resources-cdn
@@ -51,12 +59,7 @@ python3 -m http.server 8080 -d build/web
 ```
 
 Requires the [Flutter SDK](https://docs.flutter.dev/get-started/install)
-(stable channel, 3.44+). There are no other dependencies.
+(stable channel, 3.44+).
 
-## Notes on the data
-
-The bundled monthly normals (average daily high/low and precipitation) are
-approximate values rounded from public climate-normal tables — fine for
-comparing climates, not a source of record. The natural next step is wiring
-in live data (e.g. the free [Open-Meteo](https://open-meteo.com) API) so any
-city in the world can be searched; see `CLAUDE.md` for the plan.
+Product decisions, feature specs and the build order live in
+[CLAUDE.md](CLAUDE.md).

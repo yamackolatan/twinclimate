@@ -1,0 +1,141 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import '../models/place.dart';
+import '../models/weather.dart';
+
+/// Everything the app needs from a weather provider. Keep all provider
+/// calls behind this interface so the provider stays swappable (PRD rule).
+abstract class WeatherService {
+  Future<List<Place>> searchPlaces(String query);
+
+  /// Hourly forecast for [place], from [firstDay] through [lastDay]
+  /// (inclusive), in the place's local time.
+  Future<List<HourWeather>> fetchHourly({
+    required Place place,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  });
+}
+
+class WeatherServiceException implements Exception {
+  WeatherServiceException(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+/// Open-Meteo implementation. Free and keyless; supports browsers (CORS).
+class OpenMeteoWeatherService implements WeatherService {
+  OpenMeteoWeatherService({http.Client? client})
+      : _client = client ?? http.Client();
+
+  final http.Client _client;
+
+  static const _hourlyVariables = [
+    'temperature_2m',
+    'apparent_temperature',
+    'relative_humidity_2m',
+    'precipitation_probability',
+    'precipitation',
+    'wind_speed_10m',
+    'wind_gusts_10m',
+    'weather_code',
+    'is_day',
+  ];
+
+  @override
+  Future<List<Place>> searchPlaces(String query) async {
+    final uri = Uri.https('geocoding-api.open-meteo.com', '/v1/search', {
+      'name': query,
+      'count': '8',
+      'language': 'en',
+      'format': 'json',
+    });
+    final json = await _getJson(uri, 'place search');
+    final results = json['results'] as List? ?? const [];
+    return [
+      for (final raw in results)
+        Place(
+          name: (raw as Map<String, dynamic>)['name'] as String? ?? '?',
+          region: raw['admin1'] as String? ?? '',
+          country: raw['country'] as String? ?? '',
+          latitude: (raw['latitude'] as num).toDouble(),
+          longitude: (raw['longitude'] as num).toDouble(),
+        ),
+    ];
+  }
+
+  @override
+  Future<List<HourWeather>> fetchHourly({
+    required Place place,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  }) async {
+    final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
+      'latitude': place.latitude.toStringAsFixed(4),
+      'longitude': place.longitude.toStringAsFixed(4),
+      'hourly': _hourlyVariables.join(','),
+      'timezone': 'auto',
+      'start_date': _dateParam(firstDay),
+      'end_date': _dateParam(lastDay),
+    });
+    final json = await _getJson(uri, 'forecast');
+    final hourly = json['hourly'] as Map<String, dynamic>?;
+    final times = hourly?['time'] as List?;
+    if (hourly == null || times == null || times.isEmpty) {
+      throw WeatherServiceException(
+          'The forecast came back empty for this date.');
+    }
+    return [
+      for (var i = 0; i < times.length; i++)
+        HourWeather(
+          time: DateTime.parse(times[i] as String),
+          temperatureC: _number(hourly['temperature_2m'], i),
+          apparentC: _number(hourly['apparent_temperature'], i),
+          humidityPercent: _number(hourly['relative_humidity_2m'], i),
+          precipProbabilityPercent:
+              _number(hourly['precipitation_probability'], i),
+          precipitationMm: _number(hourly['precipitation'], i),
+          windKmh: _number(hourly['wind_speed_10m'], i),
+          gustKmh: _number(hourly['wind_gusts_10m'], i),
+          weatherCode: _number(hourly['weather_code'], i).round(),
+          isDay: _number(hourly['is_day'], i) > 0,
+        ),
+    ];
+  }
+
+  Future<Map<String, dynamic>> _getJson(Uri uri, String what) async {
+    final http.Response response;
+    try {
+      response = await _client
+          .get(uri)
+          .timeout(const Duration(seconds: 20));
+    } catch (_) {
+      throw WeatherServiceException(
+          'Could not reach the weather service for the $what. '
+          'Check your internet connection and try again.');
+    }
+    if (response.statusCode != 200) {
+      throw WeatherServiceException(
+          'The weather service answered with an error (code '
+          '${response.statusCode}) for the $what. Try again in a moment.');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Far-horizon hours occasionally come back null; treat those as 0
+  /// rather than crashing.
+  static double _number(Object? list, int index) {
+    if (list is! List || index >= list.length) return 0;
+    final value = list[index];
+    return value is num ? value.toDouble() : 0;
+  }
+
+  static String _dateParam(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+}

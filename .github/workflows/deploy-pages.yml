@@ -1,0 +1,63 @@
+# Builds the Flutter web app and publishes it to GitHub Pages.
+#
+# Requirements (one-time, in the GitHub UI):
+#   - GitHub Pages must be available for this repository. On GitHub's Free
+#     plan that means the repository has to be public. (Settings -> General
+#     -> Danger Zone -> Change visibility.)
+#   - Nothing else: the configure-pages step below enables Pages
+#     automatically the first time it runs.
+#
+# The site is published at: https://<owner>.github.io/<repo>/
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.2
+          cache: true
+
+      - run: flutter pub get
+
+      - run: flutter test
+
+      # --no-web-resources-cdn bundles the CanvasKit renderer with the app
+      # instead of loading it from Google's CDN at runtime.
+      - run: >
+          flutter build web --release --no-web-resources-cdn
+          --base-href "/${{ github.event.repository.name }}/"
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

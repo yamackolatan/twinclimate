@@ -237,8 +237,8 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                     max: _sport.maxKm,
                     divisions: _sport.sliderDivisions,
                     label: formatDistance(_distanceKm[_sport]!),
-                    onChanged: (km) =>
-                        setState(() => _distanceKm[_sport] = km),
+                    onChanged: (km) => setState(() => _distanceKm[_sport] =
+                        (km / _sport.stepKm).round() * _sport.stepKm),
                   ),
                   if (plan != null)
                     Text(

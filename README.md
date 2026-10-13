@@ -12,6 +12,12 @@ and **how far** you're running, riding or swimming, and it answers with:
   session"). Rain- and wind-driven items are highlighted, and the list
   doubles as a tap-to-pack checklist.
 
+| Plan a session | Conditions + kit |
+| --- | --- |
+| ![Quick Session form](docs/screenshots/quick-session-form.png) | ![Result screen](docs/screenshots/quick-session-result.png) |
+
+*(Screenshots use sample weather.)*
+
 Weather and place search come from [Open-Meteo](https://open-meteo.com)
 — free, no account, no API key. Favourite places and last-used settings
 are stored in the browser; nothing leaves the device.

@@ -16,12 +16,13 @@ SessionPlan plan({
 
 void main() {
   group('session window', () {
-    test('15 km run at 08:00 covers 08:00 and 09:00 (the PRD example)', () {
+    test('15 km run at 08:00 shows 08:00-10:00 (the F1 acceptance case)', () {
       final p = plan(start: DateTime(2026, 6, 13, 8), distanceKm: 15);
       expect(p.durationHours, closeTo(1.5, 0.001));
       expect(p.windowHours, [
         DateTime(2026, 6, 13, 8),
         DateTime(2026, 6, 13, 9),
+        DateTime(2026, 6, 13, 10),
       ]);
       expect(p.windowLabel, '08:00–09:30');
     });
@@ -34,11 +35,11 @@ void main() {
     test('a 08:30 start includes the 08:00 hour card', () {
       final p = plan(start: DateTime(2026, 6, 13, 8, 30), distanceKm: 10);
       expect(p.windowHours.first, DateTime(2026, 6, 13, 8));
-      // 1 h session ending 09:30 -> the 09:00 card is the last one needed.
-      expect(p.windowHours.last, DateTime(2026, 6, 13, 9));
+      // 1 h session ending 09:30 -> the 10:00 card closes the window.
+      expect(p.windowHours.last, DateTime(2026, 6, 13, 10));
     });
 
-    test('100 km ride at 10:00 covers four hours', () {
+    test('100 km ride at 10:00 covers 10:00 to 14:00', () {
       final p = plan(
           sport: Sport.bike,
           start: DateTime(2026, 6, 13, 10),
@@ -48,13 +49,14 @@ void main() {
         DateTime(2026, 6, 13, 11),
         DateTime(2026, 6, 13, 12),
         DateTime(2026, 6, 13, 13),
+        DateTime(2026, 6, 13, 14),
       ]);
     });
 
     test('late sessions roll over midnight into the next day', () {
       final p = plan(start: DateTime(2026, 6, 13, 23, 30), distanceKm: 10);
       expect(p.windowHours.first, DateTime(2026, 6, 13, 23));
-      expect(p.windowHours.last, DateTime(2026, 6, 14, 0));
+      expect(p.windowHours.last, DateTime(2026, 6, 14, 1));
     });
   });
 
@@ -68,7 +70,9 @@ void main() {
     test('distances read naturally', () {
       expect(formatDistance(10), '10 km');
       expect(formatDistance(0.75), '750 m');
-      expect(formatDistance(1.5), '1.50 km');
+      expect(formatDistance(1.5), '1.5 km');
+      expect(formatDistance(1.25), '1.25 km');
+      expect(formatDistance(15.000000001), '15 km');
     });
   });
 

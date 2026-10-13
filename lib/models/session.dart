@@ -70,13 +70,13 @@ class SessionPlan {
   DateTime get end =>
       start.add(Duration(minutes: (durationHours * 60).round()));
 
-  /// The clock hours the session touches, e.g. 08:30 + 1.5 h ->
-  /// [08:00, 09:00, 10:00]. Always at least two, so the forecast view
-  /// never feels empty (per the PRD).
+  /// Forecast hours bracketing the session: from the hour at or before the
+  /// start to the hour at or after the end, e.g. 08:00 + 1.5 h ->
+  /// [08:00, 09:00, 10:00]. Always at least two.
   List<DateTime> get windowHours {
     final hours = <DateTime>[];
     var hour = DateTime(start.year, start.month, start.day, start.hour);
-    while (hour.isBefore(end) || hours.length < 2) {
+    while (hours.isEmpty || hours.last.isBefore(end) || hours.length < 2) {
       hours.add(hour);
       hour = hour.add(const Duration(hours: 1));
     }
@@ -95,8 +95,11 @@ String formatTime(DateTime t) =>
 
 String formatDistance(double km) {
   if (km < 1) return '${(km * 1000).round()} m';
-  final isWhole = km == km.roundToDouble();
-  return isWhole ? '${km.round()} km' : '${km.toStringAsFixed(2)} km';
+  final text = km
+      .toStringAsFixed(2)
+      .replaceFirst(RegExp(r'0+$'), '')
+      .replaceFirst(RegExp(r'\.$'), '');
+  return '$text km';
 }
 
 String formatDuration(double hours) {

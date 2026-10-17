@@ -112,7 +112,7 @@ cyclists, triathletes, amateur sportspeople) answering two questions:
   roadmap says so.
 - **Caching:** race fingerprints are expensive (10 years × hourly). Compute
   once per race+date, cache locally, never recompute unless race changes.
-- **Data model rules:** `targetRace` is nullable; sessions exist with or
+- **Data model rules:** races are optional (a list of 0–3, see F2); sessions exist with or
   without a race link; gear items always carry a `reason` string; comfort
   profile stores per-body-part, temperature-banded preferences.
 
@@ -144,6 +144,33 @@ with reasons. Works in web preview.
   07:00–16:00: typically 17–20°C, humid, 15–25 km/h wind, 30% rain chance").
 ACCEPT: enter Ironman Kalmar (Kalmar, Sweden, 29 Aug, 07:00, ~9h) → within a
 minute a cached fingerprint exists and its summary is displayed.
+
+**Owner decisions for F2 (confirmed Oct 2026 — build to these):**
+- **Up to 3 races** saved at once, shown as "My races" cards on the home
+  screen (soonest first). With 3 saved, "Add race" is replaced by a note.
+- **Separate swim / bike / run fingerprints.** The form has one row per
+  ticked sport ("leg") with distance + expected time; legs run back-to-back
+  in fixed order swim → bike → run from the start time (duathlons not
+  supported yet; transitions ignored). Quick-fill buttons: Sprint / Olympic /
+  70.3 / Ironman (triathlon) and 10 km / Half / Marathon (run). Results show
+  an overall headline plus one summary per leg. Swim water temperature stays
+  in V3.
+- **Rain chance** = share of past race days with ≥ 1 mm of rain during the
+  race (or leg) hours, plus the typical amount on those wet days. (The
+  history archive has no forecast-style "probability".)
+- **"Through the race day" line**: start temperature, warmest/coolest point,
+  finish temperature.
+- **Years** = the 10 most recent years whose race window (date ±5 days) is
+  already in the archive.
+- Code: `lib/models/race.dart`, `lib/models/fingerprint.dart`,
+  `lib/logic/fingerprint_builder.dart` (pure maths),
+  `lib/logic/fingerprint_text.dart` (wording),
+  `lib/services/fingerprint_service.dart` (one archive request per year).
+  `tool/check_real_weather.dart` prints real fingerprints for Kalmar, Kona,
+  Istanbul Marathon, Barcelona and Wales for sanity checks.
+- Open-Meteo's free tier is limited per internet address per day. Cloud
+  sessions share addresses and can hit it ("Daily API request limit
+  exceeded"); the owner's browser is not affected.
 
 ### F3 — Race Matching
 - Entry: same session form, but with travel-range slider and the "When"

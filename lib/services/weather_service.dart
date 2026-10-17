@@ -17,6 +17,15 @@ abstract class WeatherService {
     required DateTime firstDay,
     required DateTime lastDay,
   });
+
+  /// Recorded hourly weather for [place], from [firstDay] through
+  /// [lastDay] (inclusive), in the place's local time. Hours with missing
+  /// data are left out.
+  Future<List<PastHour>> fetchHistory({
+    required Place place,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  });
 }
 
 class WeatherServiceException implements Exception {
@@ -107,6 +116,58 @@ class OpenMeteoWeatherService implements WeatherService {
     ];
   }
 
+  static const _historyVariables = [
+    'temperature_2m',
+    'apparent_temperature',
+    'relative_humidity_2m',
+    'precipitation',
+    'wind_speed_10m',
+    'wind_gusts_10m',
+  ];
+
+  @override
+  Future<List<PastHour>> fetchHistory({
+    required Place place,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  }) async {
+    final uri = Uri.https('archive-api.open-meteo.com', '/v1/archive', {
+      'latitude': place.latitude.toStringAsFixed(4),
+      'longitude': place.longitude.toStringAsFixed(4),
+      'hourly': _historyVariables.join(','),
+      'timezone': 'auto',
+      'start_date': _dateParam(firstDay),
+      'end_date': _dateParam(lastDay),
+    });
+    final json = await _getJson(uri, 'weather history');
+    final hourly = json['hourly'] as Map<String, dynamic>?;
+    final times = hourly?['time'] as List?;
+    if (hourly == null || times == null) return const [];
+    final hours = <PastHour>[];
+    for (var i = 0; i < times.length; i++) {
+      final values = [
+        for (final name in _historyVariables) _maybeNumber(hourly[name], i),
+      ];
+      if (values.contains(null)) continue;
+      hours.add(PastHour(
+        time: DateTime.parse('${times[i]}Z'),
+        temperatureC: values[0]!,
+        apparentC: values[1]!,
+        humidityPercent: values[2]!,
+        precipitationMm: values[3]!,
+        windKmh: values[4]!,
+        gustKmh: values[5]!,
+      ));
+    }
+    return hours;
+  }
+
+  static double? _maybeNumber(Object? list, int index) {
+    if (list is! List || index >= list.length) return null;
+    final value = list[index];
+    return value is num ? value.toDouble() : null;
+  }
+
   Future<Map<String, dynamic>> _getJson(Uri uri, String what) async {
     final http.Response response;
     try {
@@ -117,6 +178,11 @@ class OpenMeteoWeatherService implements WeatherService {
       throw WeatherServiceException(
           'Could not reach the weather service for the $what. '
           'Check your internet connection and try again.');
+    }
+    if (response.statusCode == 429) {
+      throw WeatherServiceException(
+          'The free weather service has had too many requests from this '
+          'internet connection today. Try again later.');
     }
     if (response.statusCode != 200) {
       throw WeatherServiceException(

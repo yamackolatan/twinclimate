@@ -28,7 +28,9 @@ the same codebase.
 ## Roadmap
 
 1. ✅ **Quick Session** — conditions + kit advice for a planned session.
-2. **Target race** — save a race and get its 10-year climate fingerprint.
+2. **Target races** — save up to 3 races and get each one's typical
+   race-day weather from 10 years of history, with separate swim / bike /
+   run summaries.
 3. **Race Matching** — find where and when, within travel range,
    conditions best match race day.
 4. **Comfort profile** — the app learns whether you run hot or cold from

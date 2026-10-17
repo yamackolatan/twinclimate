@@ -49,6 +49,14 @@ class FakeWeatherService implements WeatherService {
     }
     return hours;
   }
+
+  @override
+  Future<List<PastHour>> fetchHistory({
+    required Place place,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  }) async =>
+      const [];
 }
 
 void main() {

@@ -122,3 +122,9 @@ const List<String> _monthNames = [
 /// "Sat 13 Jun"
 String formatDay(DateTime d) =>
     '${_weekdayNames[d.weekday - 1]} ${d.day} ${_monthNames[d.month - 1]}';
+
+/// "13 Jun"
+String formatDayMonth(DateTime d) => '${d.day} ${_monthNames[d.month - 1]}';
+
+/// "Sat 13 Jun 2026"
+String formatFullDate(DateTime d) => '${formatDay(d)} ${d.year}';

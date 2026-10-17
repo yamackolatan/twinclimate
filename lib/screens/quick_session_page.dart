@@ -5,6 +5,7 @@ import '../models/session.dart';
 import '../services/prefs_store.dart';
 import '../services/weather_service.dart';
 import '../widgets/place_search_sheet.dart';
+import '../widgets/races_section.dart';
 import 'session_result_page.dart';
 
 /// The default screen: plan a training session in a few taps and get
@@ -117,6 +118,8 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  RacesSection(store: widget.store, weather: widget.weather),
+                  const SizedBox(height: 24),
                   Text('Quick Session',
                       style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: 4),

@@ -1,11 +1,13 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/place.dart';
+import '../models/race.dart';
 import '../models/session.dart';
 
 /// Local, on-device storage (works on Flutter web via browser storage).
-/// MVP persistence per the PRD: favourite places and last-used session
-/// defaults. Race, comfort profile and feedback history will join later.
+/// MVP persistence per the PRD: favourite places, last-used session
+/// defaults and races. Comfort profile and feedback history will join
+/// later.
 class PrefsStore {
   PrefsStore._(this._prefs);
 
@@ -16,6 +18,7 @@ class PrefsStore {
   static const _kDistancePrefix = 'lastDistanceKm.';
   static const _kStartHour = 'lastStartHour';
   static const _kStartMinute = 'lastStartMinute';
+  static const _kRaces = 'races';
 
   static Future<PrefsStore> load() async =>
       PrefsStore._(await SharedPreferences.getInstance());
@@ -66,4 +69,35 @@ class PrefsStore {
     await _prefs.setInt(_kStartHour, hour);
     await _prefs.setInt(_kStartMinute, minute);
   }
+
+  /// Saved races (at most [maxRaces]), soonest first. Each carries its
+  /// cached fingerprint, so reopening the app never recomputes it.
+  List<Race> get races {
+    final encoded = _prefs.getString(_kRaces);
+    if (encoded == null) return const [];
+    try {
+      return Race.decodeList(encoded)..sort((a, b) => a.date.compareTo(b.date));
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Race? raceById(String id) {
+    for (final race in races) {
+      if (race.id == id) return race;
+    }
+    return null;
+  }
+
+  /// Adds [race], or replaces the saved race with the same id. Adding a
+  /// race beyond [maxRaces] is refused (returns false).
+  Future<bool> saveRace(Race race) async {
+    final others = races.where((r) => r.id != race.id).toList();
+    if (others.length >= maxRaces) return false;
+    await _prefs.setString(_kRaces, Race.encodeList([...others, race]));
+    return true;
+  }
+
+  Future<void> deleteRace(String id) => _prefs.setString(
+      _kRaces, Race.encodeList(races.where((r) => r.id != id).toList()));
 }

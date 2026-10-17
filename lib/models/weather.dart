@@ -31,6 +31,31 @@ class HourWeather {
   final bool isDay;
 }
 
+/// One hour of recorded (past) weather, used for race fingerprints.
+///
+/// [time] is the place's local wall-clock time stored as a UTC DateTime,
+/// so hour arithmetic is never shifted by the viewer's own time zone or
+/// daylight-saving changes.
+class PastHour {
+  const PastHour({
+    required this.time,
+    required this.temperatureC,
+    required this.apparentC,
+    required this.humidityPercent,
+    required this.precipitationMm,
+    required this.windKmh,
+    required this.gustKmh,
+  });
+
+  final DateTime time;
+  final double temperatureC;
+  final double apparentC;
+  final double humidityPercent;
+  final double precipitationMm;
+  final double windKmh;
+  final double gustKmh;
+}
+
 /// The forecast for a session window, plus the aggregates the gear engine
 /// and the summary line are built from.
 class SessionForecast {

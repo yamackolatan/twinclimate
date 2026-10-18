@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../logic/fingerprint_text.dart';
 import '../logic/match_engine.dart';
 import '../logic/match_text.dart';
+import '../logic/typical_weather.dart';
 import '../models/matching.dart';
 import '../models/place.dart';
 import '../models/session.dart';
@@ -284,6 +285,18 @@ class _MatchResultPageState extends State<MatchResultPage> {
     );
   }
 
+  Widget _typicalBanner(TypicalBasis t) {
+    final when = t.forPeriod
+        ? 'the middle of your period (${formatDayMonth(t.date)}) ±5 days'
+        : '${formatDayMonth(t.date)} ±5 days';
+    return _TypicalNote(
+      'Typical conditions, not a forecast. Your dates are more than 16 days '
+      'away, so places are ranked by their average weather for $when over '
+      '${t.firstYear}–${t.lastYear}. Check again from '
+      '${formatDay(forecastAvailableFrom(t.date))} for the real forecast.',
+    );
+  }
+
   List<Widget> _results(MatchResult result) {
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodySmall?.copyWith(
@@ -298,6 +311,7 @@ class _MatchResultPageState extends State<MatchResultPage> {
     }
     final weak = result.bestScore < goodMatchScore;
     return [
+      if (result.typical != null) _typicalBanner(result.typical!),
       if (weak)
         Card(
           elevation: 0,
@@ -336,6 +350,7 @@ class _MatchResultPageState extends State<MatchResultPage> {
           target: result.target,
           onSession: () => _openSession(result.results[i]),
           onMap: () => _openMap(result.results[i].spot),
+          typicalPeriod: result.typical?.forPeriod ?? false,
         ),
       const SizedBox(height: 12),
       if (_request.sport == Sport.swim)
@@ -364,6 +379,37 @@ class _MatchResultPageState extends State<MatchResultPage> {
 String _capitalised(String s) =>
     s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
+class _TypicalNote extends StatelessWidget {
+  const _TypicalNote(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 0,
+      color: scheme.tertiaryContainer,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.history, color: scheme.onTertiaryContainer),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(color: scheme.onTertiaryContainer),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ResultCard extends StatelessWidget {
   const _ResultCard({
     required this.rank,
@@ -371,6 +417,7 @@ class _ResultCard extends StatelessWidget {
     required this.target,
     required this.onSession,
     required this.onMap,
+    this.typicalPeriod = false,
   });
 
   final int rank;
@@ -378,6 +425,9 @@ class _ResultCard extends StatelessWidget {
   final MatchTarget target;
   final VoidCallback onSession;
   final VoidCallback onMap;
+
+  /// Typical weather for a period: show the best time of day, not a date.
+  final bool typicalPeriod;
 
   @override
   Widget build(BuildContext context) {
@@ -427,7 +477,10 @@ class _ResultCard extends StatelessWidget {
             ),
             if (details.isNotEmpty) Text(details, style: muted),
             const SizedBox(height: 8),
-            Text(bestStartText(result), style: theme.textTheme.bodyMedium),
+            Text(
+              bestStartText(result, typicalDay: typicalPeriod),
+              style: theme.textTheme.bodyMedium,
+            ),
             Text(
               windowText(result),
               style: theme.textTheme.bodyMedium?.copyWith(

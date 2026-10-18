@@ -312,6 +312,24 @@ class PlaceResult {
       windowLastStart.add(Duration(minutes: durationMinutes));
 }
 
+/// What a beyond-the-forecast result is based on: typical weather from
+/// recorded history (owner request, Oct 2026).
+class TypicalBasis {
+  const TypicalBasis({
+    required this.date,
+    required this.firstYear,
+    required this.lastYear,
+    required this.forPeriod,
+  });
+
+  /// The date whose typical weather was used (± 5 days); for a period,
+  /// its middle day.
+  final DateTime date;
+  final int firstYear;
+  final int lastYear;
+  final bool forPeriod;
+}
+
 /// The full answer for a [MatchRequest].
 class MatchResult {
   const MatchResult({
@@ -319,7 +337,12 @@ class MatchResult {
     required this.results,
     required this.spotsChecked,
     required this.notes,
+    this.typical,
   });
+
+  /// Set when the dates are past the 16-day forecast and typical weather
+  /// was used instead of a forecast.
+  final TypicalBasis? typical;
 
   final MatchTarget target;
 

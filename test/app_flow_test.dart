@@ -59,6 +59,14 @@ class FakeWeatherService implements WeatherService {
       const [];
 
   @override
+  Future<List<SpotHistory>> fetchHistoryMany({
+    required List<(double, double)> points,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  }) async =>
+      throw UnimplementedError();
+
+  @override
   Future<List<SpotForecast>> fetchHourlyMany({
     required List<(double, double)> points,
     required DateTime firstDay,

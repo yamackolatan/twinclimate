@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../logic/gear_engine.dart';
+import '../logic/typical_weather.dart';
 import '../logic/weather_text.dart';
 import '../models/comfort.dart';
 import '../models/session.dart';
 import '../models/weather.dart';
 import '../services/prefs_store.dart';
+import '../services/typical_weather_service.dart';
 import '../services/weather_service.dart';
 import '../widgets/hour_cards.dart';
 import '../widgets/kit_checklist.dart';
@@ -33,6 +35,12 @@ class SessionResultPage extends StatefulWidget {
 class _SessionResultPageState extends State<SessionResultPage> {
   late Future<SessionForecast> _forecast;
 
+  /// Set when the date is past the 16-day forecast and typical weather
+  /// from the last 10 years is shown instead.
+  TypicalSession? _typical;
+
+  bool get _isTypical => beyondForecast(widget.plan.start, DateTime.now());
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +48,14 @@ class _SessionResultPageState extends State<SessionResultPage> {
   }
 
   Future<SessionForecast> _load() async {
+    if (_isTypical) {
+      final typical = await TypicalWeatherService(
+        widget.weather,
+      ).forSession(widget.plan.place, widget.plan.windowHours);
+      _typical = typical;
+      await _remember(typical.forecast);
+      return typical.forecast;
+    }
     final windowHours = widget.plan.windowHours;
     final all = await widget.weather.fetchHourly(
       place: widget.plan.place,
@@ -193,6 +209,10 @@ class _SessionResultPageState extends State<SessionResultPage> {
                     _chip(context, Icons.route, plan.distanceLabel),
                   ],
                 ),
+                if (_typical != null) ...[
+                  const SizedBox(height: 12),
+                  _typicalBanner(context, _typical!),
+                ],
                 const SizedBox(height: 16),
 
                 // Summary: feels-like at start + sky + humidity + wind.
@@ -214,7 +234,9 @@ class _SessionResultPageState extends State<SessionResultPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Feels like ${start.apparentC.round()}° at the start',
+                                _typical == null
+                                    ? 'Feels like ${start.apparentC.round()}° at the start'
+                                    : 'Typically feels like ${start.apparentC.round()}° at the start',
                                 style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(
                                       color: scheme.onPrimaryContainer,
@@ -265,7 +287,8 @@ class _SessionResultPageState extends State<SessionResultPage> {
                 const SizedBox(height: 24),
 
                 Text(
-                  'Forecast by Open-Meteo for the exact coordinates of '
+                  '${_typical == null ? 'Forecast' : 'Typical weather from recorded history (ERA5)'} '
+                  'by Open-Meteo for the exact coordinates of '
                   '${plan.place.name} '
                   '(${plan.place.latitude.toStringAsFixed(3)}, '
                   '${plan.place.longitude.toStringAsFixed(3)}), local time.',
@@ -278,6 +301,38 @@ class _SessionResultPageState extends State<SessionResultPage> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _typicalBanner(BuildContext context, TypicalSession t) {
+    final scheme = Theme.of(context).colorScheme;
+    final range = t.feelsSpread;
+    final from = forecastAvailableFrom(widget.plan.start);
+    return Card(
+      elevation: 0,
+      color: scheme.tertiaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.history, color: scheme.onTertiaryContainer),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Typical weather, not a forecast. This date is more than 16 '
+                'days away, so we show the average at this spot for '
+                '${formatDayMonth(widget.plan.start)} ±5 days over '
+                '${t.firstYear}–${t.lastYear}: usually feels like '
+                '${range.low.round()}–${range.high.round()}° during your '
+                'session. The real forecast is available from '
+                '${formatDay(from)}.',
+                style: TextStyle(color: scheme.onTertiaryContainer),
+              ),
+            ),
+          ],
         ),
       ),
     );

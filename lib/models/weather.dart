@@ -59,6 +59,8 @@ class PastHour {
     required this.precipitationMm,
     required this.windKmh,
     required this.gustKmh,
+    this.cloudCoverPercent,
+    this.radiationWm2,
   });
 
   final DateTime time;
@@ -68,6 +70,19 @@ class PastHour {
   final double precipitationMm;
   final double windKmh;
   final double gustKmh;
+
+  /// Optional extras, used for "typical weather" beyond the forecast.
+  final double? cloudCoverPercent;
+  final double? radiationWm2;
+}
+
+/// Recorded history for one coordinate of a multi-spot request, with the
+/// ground height the weather service used (0 over the sea).
+class SpotHistory {
+  const SpotHistory({required this.elevationM, required this.hours});
+
+  final double elevationM;
+  final List<PastHour> hours;
 }
 
 /// The forecast for a session window, plus the aggregates the gear engine

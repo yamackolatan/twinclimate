@@ -27,6 +27,14 @@ abstract class WeatherService {
     required DateTime lastDay,
   });
 
+  /// Recorded hourly weather for several coordinates at once, one per point
+  /// in the same order (local time, see [PastHour]).
+  Future<List<SpotHistory>> fetchHistoryMany({
+    required List<(double, double)> points,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  });
+
   /// Hourly forecasts for several coordinates at once, one per point in
   /// the same order, each in that point's local time and with its ground
   /// height (0 over the sea).
@@ -179,6 +187,9 @@ class OpenMeteoWeatherService implements WeatherService {
     'wind_gusts_10m',
   ];
 
+  /// Extras for "typical weather": sunshine and cloud (optional per hour).
+  static const _historyExtras = ['shortwave_radiation', 'cloud_cover'];
+
   @override
   Future<List<PastHour>> fetchHistory({
     required Place place,
@@ -188,12 +199,45 @@ class OpenMeteoWeatherService implements WeatherService {
     final uri = Uri.https('archive-api.open-meteo.com', '/v1/archive', {
       'latitude': place.latitude.toStringAsFixed(4),
       'longitude': place.longitude.toStringAsFixed(4),
-      'hourly': _historyVariables.join(','),
+      'hourly': [..._historyVariables, ..._historyExtras].join(','),
       'timezone': 'auto',
       'start_date': _dateParam(firstDay),
       'end_date': _dateParam(lastDay),
     });
-    final json = await _getJson(uri, 'weather history');
+    return _parseHistory(await _getJson(uri, 'weather history'));
+  }
+
+  @override
+  Future<List<SpotHistory>> fetchHistoryMany({
+    required List<(double, double)> points,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  }) async {
+    final uri = Uri.https('archive-api.open-meteo.com', '/v1/archive', {
+      'latitude': points.map((p) => p.$1.toStringAsFixed(4)).join(','),
+      'longitude': points.map((p) => p.$2.toStringAsFixed(4)).join(','),
+      'hourly': [..._historyVariables, 'shortwave_radiation'].join(','),
+      'timezone': 'auto',
+      'start_date': _dateParam(firstDay),
+      'end_date': _dateParam(lastDay),
+    });
+    final decoded = await _get(uri, 'weather history');
+    final items = decoded is List ? decoded : [decoded];
+    if (items.length != points.length) {
+      throw WeatherServiceException(
+        'The weather history came back incomplete. Try again in a moment.',
+      );
+    }
+    return [
+      for (final item in items.cast<Map<String, dynamic>>())
+        SpotHistory(
+          elevationM: (item['elevation'] as num?)?.toDouble() ?? 1,
+          hours: _parseHistory(item),
+        ),
+    ];
+  }
+
+  static List<PastHour> _parseHistory(Map<String, dynamic> json) {
     final hourly = json['hourly'] as Map<String, dynamic>?;
     final times = hourly?['time'] as List?;
     if (hourly == null || times == null) return const [];
@@ -212,6 +256,8 @@ class OpenMeteoWeatherService implements WeatherService {
           precipitationMm: values[3]!,
           windKmh: values[4]!,
           gustKmh: values[5]!,
+          radiationWm2: _maybeNumber(hourly['shortwave_radiation'], i),
+          cloudCoverPercent: _maybeNumber(hourly['cloud_cover'], i),
         ),
       );
     }
@@ -238,9 +284,13 @@ class OpenMeteoWeatherService implements WeatherService {
       );
     }
     if (response.statusCode == 429) {
+      final minutely = response.body.toLowerCase().contains('minutely');
       throw WeatherServiceException(
-        'The free weather service has had too many requests from this '
-        'internet connection today. Try again later.',
+        minutely
+            ? 'The free weather service is busy with requests from this '
+                  'connection — wait a minute and try again.'
+            : 'The free weather service has had too many requests from this '
+                  'internet connection today. Try again later.',
         retryable: false,
       );
     }

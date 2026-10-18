@@ -29,7 +29,22 @@ int _overnightDays(Race race) =>
 /// The [fingerprintYearCount] most recent years whose race window
 /// (race date ± [fingerprintDaySpread] days) is already in the archive,
 /// oldest first.
-List<int> fingerprintYears(Race race, DateTime today) {
+List<int> fingerprintYears(Race race, DateTime today) => historyYears(
+  month: race.date.month,
+  day: race.date.day,
+  extraDays: _overnightDays(race),
+  today: today,
+);
+
+/// The [fingerprintYearCount] most recent years whose window — the given
+/// calendar day ± [fingerprintDaySpread] days, plus [extraDays] — is
+/// already in the archive, oldest first.
+List<int> historyYears({
+  required int month,
+  required int day,
+  required DateTime today,
+  int extraDays = 0,
+}) {
   final cutoff = DateTime.utc(
     today.year,
     today.month,
@@ -43,8 +58,8 @@ List<int> fingerprintYears(Race race, DateTime today) {
   ) {
     final windowEnd = DateTime.utc(
       year,
-      race.date.month,
-      race.date.day + fingerprintDaySpread + _overnightDays(race),
+      month,
+      day + fingerprintDaySpread + extraDays,
     );
     if (windowEnd.isBefore(cutoff)) years.add(year);
   }

@@ -22,9 +22,11 @@ String windowText(PlaceResult r) {
   return 'Start between $first and $last → you\'d train $first–$end';
 }
 
-/// "Sat 24 Oct · best start 08:00"
-String bestStartText(PlaceResult r) =>
-    '${formatDay(r.best.start)} · best start ${formatTime(r.best.start)}';
+/// "Sat 24 Oct · best start 08:00" — or, for typical weather over a
+/// period, "On a typical day · best start 08:00".
+String bestStartText(PlaceResult r, {bool typicalDay = false}) =>
+    '${typicalDay ? 'On a typical day' : formatDay(r.best.start)} · '
+    'best start ${formatTime(r.best.start)}';
 
 /// Forecast vs race-typical numbers, e.g. "19°C vs 18°C race typical".
 List<String> comparisonParts(SessionConditions c, ConditionStats target) => [

@@ -1,7 +1,8 @@
 import '../logic/match_engine.dart';
+import '../logic/typical_weather.dart';
 import '../models/matching.dart';
-import '../models/session.dart';
 import '../models/weather.dart';
+import 'typical_weather_service.dart';
 import 'weather_service.dart';
 
 /// Finds where and when, within travel range, training conditions come
@@ -19,9 +20,6 @@ class MatchService {
 
   /// Forecasts are requested for this many spots at a time.
   static const _batchSize = 50;
-
-  /// Open-Meteo forecasts reach 16 days ahead (today + 15).
-  static const _forecastDays = 16;
 
   /// [onProgress] receives short status lines for the loading screen.
   Future<MatchResult> run(
@@ -44,53 +42,87 @@ class MatchService {
     );
 
     final now = _clock();
-    final today = DateTime(now.year, now.month, now.day);
-    final lastForecastDay = today.add(const Duration(days: _forecastDays - 1));
-    final days = switch (request.mode) {
-      MatchMode.specificDate => [
-        DateTime(request.date.year, request.date.month, request.date.day),
-      ],
+    final today = dayOnly(now);
+    final lastDayOfForecast = lastForecastDay(now);
+    final requested = switch (request.mode) {
+      MatchMode.specificDate => [dayOnly(request.date)],
       MatchMode.period => [
         for (var i = 0; i < request.periodDays; i++)
           if (_periodDay(request, today, i) case final day
-              when !day.isBefore(today) && !day.isAfter(lastForecastDay))
+              when !day.isBefore(today))
             day,
       ],
     };
-    if (days.isEmpty) {
+    if (requested.isEmpty) {
       throw WeatherServiceException(
-        'Those dates are outside the forecast. Forecasts reach 16 days '
-        'ahead — pick dates up to ${formatDay(lastForecastDay)}.',
+        'Those dates are in the past — pick dates from today on.',
         retryable: false,
       );
     }
-    // Late starts can run past midnight; fetch the next day when possible.
-    final nextDay = days.last.add(const Duration(days: 1));
-    final lastDay = nextDay.isAfter(lastForecastDay) ? days.last : nextDay;
 
-    final forecasts = <SpotForecast>[];
-    for (var i = 0; i < spots.length; i += _batchSize) {
-      final batch = spots.skip(i).take(_batchSize).toList();
-      forecasts.addAll(
-        await _retry(
-          () => weather.fetchHourlyMany(
-            points: [for (final s in batch) (s.latitude, s.longitude)],
-            firstDay: days.first,
-            lastDay: lastDay,
-          ),
-        ),
+    // Past the 16-day forecast, rank places by typical weather instead.
+    final useTypical = requested.any((d) => d.isAfter(lastDayOfForecast));
+    final List<DateTime> days;
+    final List<(Spot, List<HourWeather>)> land;
+    TypicalBasis? basis;
+    if (useTypical) {
+      final date = requested[requested.length ~/ 2];
+      days = [date];
+      final (typicalSpots, years) =
+          await TypicalWeatherService(
+            weather,
+            clock: _clock,
+            retryDelay: retryDelay,
+          ).forSpots(
+            [for (final s in spots) (s.latitude, s.longitude)],
+            date,
+            onProgress: (done, total) => onProgress?.call(
+              'Beyond the 16-day forecast — looking at 10 years of weather '
+              'at ${spots.length} spots ($done of $total years)…',
+            ),
+          );
+      basis = TypicalBasis(
+        date: date,
+        firstYear: years.first,
+        lastYear: years.last,
+        forPeriod: request.mode == MatchMode.period,
       );
-    }
-
-    // Spots in the sea (height 0) are left out; the start point stays.
-    final land = [
-      for (var i = 0; i < spots.length; i++)
-        if (spots[i].isHome || forecasts[i].elevationM > 0)
-          (
-            spots[i].copyWith(elevationM: forecasts[i].elevationM),
-            forecasts[i].hours,
+      land = [
+        for (var i = 0; i < spots.length; i++)
+          if (spots[i].isHome || typicalSpots[i].elevationM > 0)
+            (
+              spots[i].copyWith(elevationM: typicalSpots[i].elevationM),
+              typicalSpots[i].hours,
+            ),
+      ];
+    } else {
+      days = requested;
+      // Late starts can run past midnight; fetch the next day when possible.
+      final nextDay = days.last.add(const Duration(days: 1));
+      final lastDay = nextDay.isAfter(lastDayOfForecast) ? days.last : nextDay;
+      final forecasts = <SpotForecast>[];
+      for (var i = 0; i < spots.length; i += _batchSize) {
+        final batch = spots.skip(i).take(_batchSize).toList();
+        forecasts.addAll(
+          await _retry(
+            () => weather.fetchHourlyMany(
+              points: [for (final s in batch) (s.latitude, s.longitude)],
+              firstDay: days.first,
+              lastDay: lastDay,
+            ),
           ),
-    ];
+        );
+      }
+      // Spots in the sea (height 0) are left out; the start point stays.
+      land = [
+        for (var i = 0; i < spots.length; i++)
+          if (spots[i].isHome || forecasts[i].elevationM > 0)
+            (
+              spots[i].copyWith(elevationM: forecasts[i].elevationM),
+              forecasts[i].hours,
+            ),
+      ];
+    }
 
     onProgress?.call('Comparing every start time with race day…');
     final perSpot = <PlaceResult>[];
@@ -107,7 +139,7 @@ class MatchService {
         target: target.stats,
         weights: request.weights,
         window: request.window,
-        notBefore: now.add(const Duration(minutes: 15)),
+        notBefore: useTypical ? null : now.add(const Duration(minutes: 15)),
       );
       if (result != null) perSpot.add(result);
     }
@@ -117,6 +149,7 @@ class MatchService {
       target: target,
       results: ranked,
       spotsChecked: land.length,
+      typical: basis,
       notes: ranked.isEmpty
           ? [noTimeFoundNote(request.window, request.durationMinutes)]
           : adaptationNotes(

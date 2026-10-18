@@ -149,6 +149,23 @@ with reasons. Works in web preview.
   gilet 10–13, then base layer + jackets. `tool/print_kit_table.dart`
   prints the table for review.
 
+**Beyond the 16-day forecast (owner request, Oct 2026 — build to this):**
+- Researched: day-to-day forecast skill fades after ~10–16 days; Open-Meteo's
+  35-day ensemble adds only marginal skill in weeks 3–4 (ECMWF), and its
+  ~7-month seasonal forecast gives daily summaries/tendencies only. So for
+  dates past today + 15 the app shows **typical weather from the last 10
+  years** at the exact spot: same clock hours, date ±5 days (same machinery
+  as race fingerprints), clearly labelled "Typical weather, not a forecast"
+  with the date the real forecast becomes available.
+- Quick Session dates go up to a year ahead. Race Matching specific dates
+  and "Choose dates" periods too (periods capped at 31 days; beyond the
+  forecast a period is ranked on its middle day ±5 days). Race Matching
+  fetches history for all 43 spots in one request per year, sequentially
+  (per-minute limit).
+- Code: `lib/logic/typical_weather.dart`, `lib/services/
+  typical_weather_service.dart`; `tool/check_typical.dart` checks it on
+  real data.
+
 ### F2 — Target race & fingerprint
 - Add/edit a target race: name, place (geocoded), date, race start time +
   expected duration window, sport(s). Stored locally; deletable; app fully

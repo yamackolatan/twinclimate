@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../logic/feedback_logic.dart';
 import '../logic/match_engine.dart';
+import '../logic/typical_weather.dart';
 import '../models/comfort.dart';
 import '../models/matching.dart';
 import '../models/place.dart';
@@ -136,8 +137,9 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
       context: context,
       initialDate: _date.isBefore(today) ? today : _date,
       firstDate: today,
-      // Open-Meteo forecasts reach 16 days out.
-      lastDate: today.add(const Duration(days: 15)),
+      // Forecasts reach 16 days; beyond that the app shows typical
+      // weather from the last 10 years, so a year ahead is allowed.
+      lastDate: today.add(const Duration(days: 365)),
     );
     if (picked != null) setState(() => _date = picked);
   }
@@ -393,6 +395,11 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                         ),
                       ],
                     ),
+                  if (!matching && beyondForecast(_date, DateTime.now()))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(_typicalNote(_date), style: muted),
+                    ),
                   const SizedBox(height: 16),
 
                   // Distance
@@ -599,9 +606,11 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
       _mode == MatchMode.specificDate
           ? 'We\'ll find the best places and the best time window that '
                 'day, within your training hours.'
+                '${beyondForecast(_date, DateTime.now()) ? ' ${_typicalNote(_date)}' : ''}'
           : 'We\'ll find the best day, place and time window, within your '
-                'training hours. Forecasts reach 16 days ahead, so dates go '
-                'up to ${formatDay(_lastForecastDay)}.',
+                'training hours. Up to ${formatDay(_lastForecastDay)} we use '
+                'the forecast; further ahead (up to a year), typical weather '
+                'from the last 10 years.',
       style: muted,
     ),
     const SizedBox(height: 16),
@@ -654,10 +663,20 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
   /// Open-Meteo forecasts reach 16 days: today + 15.
   DateTime get _lastForecastDay => _today.add(const Duration(days: 15));
 
+  /// "More than 16 days ahead: you'll see typical weather …"
+  String _typicalNote(DateTime date) =>
+      'More than 16 days ahead, so you\'ll see typical weather for that '
+      'date from the last 10 years. The real forecast is available from '
+      '${formatDay(forecastAvailableFrom(date))}.';
+
+  /// Longest period that can be picked (typical weather is taken around
+  /// its middle, so very long periods would blur the seasons).
+  static const _maxPeriodDays = 31;
+
   /// Lets the user pick their own period from the calendar (owner request).
   Future<void> _pickPeriod() async {
     final today = _today;
-    final last = _lastForecastDay;
+    final last = today.add(const Duration(days: 365));
     var initial = _customRange;
     if (initial == null ||
         initial.start.isBefore(today) ||
@@ -675,7 +694,23 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
       helpText: 'Pick the days you could train',
       saveText: 'Use these dates',
     );
-    if (picked != null) setState(() => _customRange = picked);
+    if (picked == null || !mounted) return;
+    var range = picked;
+    if (range.duration.inDays + 1 > _maxPeriodDays) {
+      range = DateTimeRange(
+        start: range.start,
+        end: range.start.add(const Duration(days: _maxPeriodDays - 1)),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Periods are limited to $_maxPeriodDays days — shortened to the '
+            'first $_maxPeriodDays.',
+          ),
+        ),
+      );
+    }
+    setState(() => _customRange = range);
   }
 
   /// Minutes the current match session would take.

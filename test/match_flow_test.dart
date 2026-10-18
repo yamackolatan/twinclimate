@@ -12,7 +12,6 @@ import 'package:twinclimate/screens/session_result_page.dart';
 import 'package:twinclimate/services/match_service.dart';
 import 'package:twinclimate/services/place_namer.dart';
 import 'package:twinclimate/services/prefs_store.dart';
-import 'package:twinclimate/services/weather_service.dart';
 
 import 'fingerprint_test.dart' show fakeHistory;
 import 'race_flow_test.dart' show FakeRaceWeather;
@@ -63,6 +62,23 @@ class FakeMatchWeather extends FakeRaceWeather {
         SpotForecast(
           elevationM: p.$1 > homeLat + 0.3 ? 0 : 50,
           hours: _forecast(p.$1, p.$2, firstDay, lastDay),
+        ),
+    ];
+  }
+
+  @override
+  Future<List<SpotHistory>> fetchHistoryMany({
+    required List<(double, double)> points,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  }) async {
+    final all = await super.fetchHistoryMany(
+        points: points, firstDay: firstDay, lastDay: lastDay);
+    return [
+      for (var i = 0; i < points.length; i++)
+        SpotHistory(
+          elevationM: points[i].$1 > homeLat + 0.3 ? 0 : 50,
+          hours: all[i].hours,
         ),
     ];
   }
@@ -164,15 +180,13 @@ void main() {
       }
     });
 
-    test('dates beyond the 16-day forecast get a clear message', () async {
-      await expectLater(
-        MatchService(FakeMatchWeather(), clock: () => now).run(request(
-            MatchMode.period,
-            periodStart: DateTime(2026, 11, 20),
-            periodDays: 3)),
-        throwsA(isA<WeatherServiceException>().having(
-            (e) => e.message, 'message', contains('16 days ahead'))),
-      );
+    test('dates beyond the 16-day forecast use typical weather', () async {
+      final result = await MatchService(FakeMatchWeather(), clock: () => now)
+          .run(request(MatchMode.period,
+              periodStart: DateTime(2026, 11, 20), periodDays: 3));
+      expect(result.typical, isNotNull);
+      expect(result.typical!.date, DateTime(2026, 11, 21));
+      expect(result.results, hasLength(5));
     });
   });
 
@@ -216,7 +230,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Next 14 days'), findsOneWidget);
     expect(find.text('Choose dates'), findsOneWidget);
-    expect(find.textContaining('Forecasts reach 16 days ahead'),
+    expect(find.textContaining('typical weather from the last 10 years'),
         findsOneWidget);
     await tester.tap(find.text('Specific date'));
     await tester.pumpAndSettle();

@@ -62,6 +62,21 @@ class FakeHistoryService implements WeatherService {
   @override
   Future<List<Place>> searchPlaces(String query) => throw UnimplementedError();
 
+  final manyHistoryCalls = <(int, DateTime, DateTime)>[];
+
+  @override
+  Future<List<SpotHistory>> fetchHistoryMany({
+    required List<(double, double)> points,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  }) async {
+    manyHistoryCalls.add((points.length, firstDay, lastDay));
+    return [
+      for (final _ in points)
+        SpotHistory(elevationM: 50, hours: fakeHistory(firstDay, lastDay)),
+    ];
+  }
+
   @override
   Future<List<SpotForecast>> fetchHourlyMany({
     required List<(double, double)> points,

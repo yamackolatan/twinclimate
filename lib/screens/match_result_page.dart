@@ -99,6 +99,7 @@ class _MatchResultPageState extends State<MatchResultPage> {
       date: _request.date,
       periodDays: _request.periodDays,
       weights: _request.weights,
+      window: _request.window,
     );
   }
 
@@ -213,7 +214,9 @@ class _MatchResultPageState extends State<MatchResultPage> {
         Text(
           '${formatDistance(r.distanceKm)} ${r.sport.label.toLowerCase()} '
           '(about ${formatDuration(r.durationHours)}) · within '
-          '${r.rangeKm.round()} km of ${r.home.name} · $when',
+          '${r.rangeKm.round()} km of ${r.home.name} · $when · '
+          'training ${r.window.label}'
+          '${r.window.daylightOnly ? ' (daylight only)' : ''}',
           style: theme.textTheme.bodySmall
               ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
@@ -319,9 +322,9 @@ class _MatchResultPageState extends State<MatchResultPage> {
           ),
         ),
       Text(
-        'Checked ${result.spotsChecked} spots on land and every start time '
-        'from ${firstStartHour.toString().padLeft(2, '0')}:00 to '
-        '$lastStartHour:00 (sessions in daylight only, as races are). '
+        'Checked ${result.spotsChecked} spots on land and every hourly start '
+        'time in your training window (${_request.window.label}'
+        '${_request.window.daylightOnly ? ', daylight only' : ''}). '
         '100% means race-typical conditions; 70% or '
         'more is within the normal range of race days. The bars show the '
         'score for each start time; the highlighted ones are the good '
@@ -458,7 +461,7 @@ class _ScoreBars extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      option.start.hour % 3 == 0
+                      _showLabel(option)
                           ? option.start.hour.toString().padLeft(2, '0')
                           : '',
                       style: small,
@@ -470,6 +473,13 @@ class _ScoreBars extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  bool _showLabel(MatchOption option) {
+    final scores = result.dayScores;
+    if (scores.length <= 6) return true;
+    final i = scores.indexOf(option);
+    return i == 0 || i == scores.length - 1 || i % 3 == 0;
   }
 
   bool _inWindow(DateTime start) =>

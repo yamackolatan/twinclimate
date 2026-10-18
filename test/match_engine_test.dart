@@ -199,6 +199,28 @@ void main() {
           isNull);
     });
 
+    test('with "Daylight only" off, dark hours are allowed', () {
+      final dark = {
+        for (var h = 0; h < 24; h++)
+          DateTime(2026, 10, 24, h): HourWeather(
+            time: DateTime(2026, 10, 24, h),
+            temperatureC: 18,
+            apparentC: 18,
+            humidityPercent: 75,
+            precipProbabilityPercent: 30,
+            precipitationMm: 0,
+            windKmh: 15,
+            gustKmh: 30,
+            weatherCode: 1,
+            isDay: false,
+          ),
+      };
+      final start = DateTime(2026, 10, 24, 19);
+      expect(sessionConditions(dark, start, 60), isNull);
+      expect(sessionConditions(dark, start, 60, requireDaylight: false),
+          isNotNull);
+    });
+
     test('missing forecast hours give no score instead of a fake one', () {
       final c = sessionConditions(const {}, day, 60);
       expect(c, isNull);
@@ -210,8 +232,13 @@ void main() {
     const spot = Spot(
         latitude: 41, longitude: 29, distanceKm: 0, bearingDegrees: 0);
 
+    // 06:00 earliest start, 19:00 latest finish: hourly starts 06:00-18:00.
+    const sixToSeven = TrainingWindow(fromMinutes: 360, untilMinutes: 1140);
+
     PlaceResult best(Map<DateTime, HourWeather> byHour,
-            {DateTime? notBefore, List<DateTime>? days}) =>
+            {DateTime? notBefore,
+            List<DateTime>? days,
+            TrainingWindow window = sixToSeven}) =>
         bestForSpot(
           spot: spot,
           byHour: byHour,
@@ -219,6 +246,7 @@ void main() {
           durationMinutes: 60,
           target: target,
           weights: runWeights,
+          window: window,
           notBefore: notBefore,
         )!;
 
@@ -233,8 +261,8 @@ void main() {
       expect(r.windowLastStart, DateTime(2026, 10, 24, 10));
       expect(windowText(r),
           'Start between 08:00 and 10:00 → you\'d train 08:00–11:00');
-      expect(r.dayScores.first.start.hour, firstStartHour);
-      expect(r.dayScores.last.start.hour, lastStartHour);
+      expect(r.dayScores.first.start.hour, 6);
+      expect(r.dayScores.last.start.hour, 18);
     });
 
     test('a sharp peak gives a single start time', () {
@@ -243,6 +271,15 @@ void main() {
       final r = best(byHour);
       expect(r.windowFirstStart, r.windowLastStart);
       expect(windowText(r), 'Start at 09:00 → you\'d train 09:00–10:00');
+    });
+
+    test('only start times inside the training window are tried', () {
+      final r = best(peakedDay(day),
+          window: const TrainingWindow(fromMinutes: 450, untilMinutes: 720));
+      // 07:30, 08:30, 09:30, 10:30 (a 60-min session must end by 12:00).
+      expect([for (final o in r.dayScores) TrainingWindow.clock(
+          o.start.hour * 60 + o.start.minute)],
+          ['07:30', '08:30', '09:30', '10:30']);
     });
 
     test('start times already in the past are skipped', () {
@@ -261,6 +298,42 @@ void main() {
       };
       final r = best(byHour, days: [day, day2]);
       expect(r.best.start, DateTime(2026, 10, 25, 9));
+    });
+  });
+
+  group('training window', () {
+    test('defaults: 06:00 to 20:00, daylight only', () {
+      const w = TrainingWindow();
+      expect(w.label, '06:00–20:00');
+      expect(w.daylightOnly, isTrue);
+      expect(w.isValid, isTrue);
+    });
+
+    test('hourly starts from the earliest start, finishing in time', () {
+      const w = TrainingWindow(fromMinutes: 390, untilMinutes: 540);
+      expect(w.startMinutes(60), [390, 450]);
+      expect(w.startMinutes(150), [390]);
+      expect(w.startMinutes(151), isEmpty);
+      expect(w.fits(150), isTrue);
+      expect(w.fits(151), isFalse);
+    });
+
+    test('finish before start is invalid', () {
+      expect(const TrainingWindow(fromMinutes: 600, untilMinutes: 540).isValid,
+          isFalse);
+    });
+
+    test('empty results explain what to change', () {
+      expect(
+          noTimeFoundNote(
+              const TrainingWindow(fromMinutes: 420, untilMinutes: 480), 90),
+          'Your training window (07:00–08:00) is shorter than this session '
+          '(about 1 h 30 min). Widen the window or shorten the session.');
+      expect(noTimeFoundNote(const TrainingWindow(), 60),
+          contains('turn off "Daylight only"'));
+      expect(
+          noTimeFoundNote(const TrainingWindow(daylightOnly: false), 60),
+          isNot(contains('Daylight')));
     });
   });
 

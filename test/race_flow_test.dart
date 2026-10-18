@@ -116,6 +116,7 @@ void main() {
     });
     expect(store.races, isEmpty);
     expect(store.savedPlaces, isEmpty);
+    expect(store.trainingWindow.label, '06:00–20:00');
     await _pumpHome(tester, store, FakeRaceWeather());
     expect(find.text('Quick Session'), findsOneWidget);
     expect(find.text('Training for a race?'), findsOneWidget);

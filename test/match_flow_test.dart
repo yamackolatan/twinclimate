@@ -174,6 +174,17 @@ void main() {
     expect(find.text('Specific date'), findsOneWidget);
     expect(find.text('Advanced: what matters most'), findsOneWidget);
 
+    // Training hours and the optional daylight rule, remembered.
+    expect(find.text('When can you train?'), findsOneWidget);
+    expect(find.text('From 06:00'), findsOneWidget);
+    expect(find.text('Until 20:00'), findsOneWidget);
+    await tester.tap(find.text('Daylight only'));
+    await tester.pumpAndSettle();
+    expect(store.trainingWindow.daylightOnly, isFalse);
+    await tester.tap(find.text('Daylight only'));
+    await tester.pumpAndSettle();
+    expect(store.trainingWindow.daylightOnly, isTrue);
+
     // Period mode offers 7 or 14 days.
     await tester.tap(find.text('Best day in a period'));
     await tester.pumpAndSettle();
@@ -201,6 +212,34 @@ void main() {
     await tester.tap(find.text('See forecast & kit').first);
     await tester.pumpAndSettle();
     expect(find.byType(SessionResultPage), findsOneWidget);
+  });
+
+  testWidgets('a training window shorter than the session blocks the search',
+      (tester) async {
+    tester.view.physicalSize = const Size(1000, 3200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({
+      'trainFromMinutes': 7 * 60,
+      'trainUntilMinutes': 7 * 60 + 30,
+    });
+    final store = await PrefsStore.load();
+    await store.saveRace(kalmarWithFingerprint());
+    await tester.pumpWidget(MaterialApp(
+      home: QuickSessionPage(
+          store: store, weather: FakeMatchWeather(), namer: FakeNamer()),
+    ));
+    await tester.tap(find.text('Match my race'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Belgrad Forest'));
+    await tester.pump();
+    expect(find.textContaining('Your training window (07:00–07:30) is '
+        'shorter than this session'), findsOneWidget);
+    final button = tester.widget<FilledButton>(find.ancestor(
+        of: find.text('Find race-like conditions'),
+        matching: find.byWidgetPredicate((w) => w is FilledButton)));
+    expect(button.onPressed, isNull);
   });
 
   testWidgets('no race saved: no match switch, Quick Session as before',

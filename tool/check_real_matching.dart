@@ -77,12 +77,16 @@ Future<void> main(List<String> args) async {
 
   final date = args.isEmpty ? _nextSaturday() : DateTime.parse(args.first);
   final home = presetPlaces.first;
+  const evening = TrainingWindow(fromMinutes: 17 * 60, untilMinutes: 21 * 60);
   final cases = [
-    (Sport.run, 15.0, MatchMode.specificDate),
-    (Sport.bike, 90.0, MatchMode.specificDate),
-    (Sport.run, 15.0, MatchMode.period),
+    (Sport.run, 15.0, MatchMode.specificDate, const TrainingWindow()),
+    (Sport.bike, 90.0, MatchMode.specificDate, const TrainingWindow()),
+    (Sport.run, 15.0, MatchMode.period, const TrainingWindow()),
+    (Sport.run, 10.0, MatchMode.specificDate, evening),
+    (Sport.run, 10.0, MatchMode.specificDate,
+        evening.copyWith(daylightOnly: false)),
   ];
-  for (final (sport, km, mode) in cases) {
+  for (final (sport, km, mode, window) in cases) {
     final request = MatchRequest(
       race: race,
       sport: sport,
@@ -97,6 +101,7 @@ Future<void> main(List<String> args) async {
       date: date,
       periodDays: 14,
       weights: MatchWeights.forSport(sport),
+      window: window,
     );
     final watch = Stopwatch()..start();
     final result = await MatchService(weather).run(request);

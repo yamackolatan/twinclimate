@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../logic/match_engine.dart';
 import '../models/matching.dart';
 import '../models/place.dart';
 import '../models/race.dart';
@@ -48,6 +49,7 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
   double _rangeKm = 50;
   MatchMode _mode = MatchMode.specificDate;
   int _periodDays = 14;
+  late TrainingWindow _window = widget.store.trainingWindow;
   final Map<Sport, MatchWeights> _weights = {
     for (final sport in Sport.values) sport: MatchWeights.forSport(sport),
   };
@@ -151,6 +153,7 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
             date: _date,
             periodDays: _periodDays,
             weights: _weights[_sport]!,
+            window: _window,
           ),
           store: widget.store,
           weather: widget.weather,
@@ -380,7 +383,9 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
 
                   if (matching)
                     FilledButton.icon(
-                      onPressed: _place == null ? null : _findMatches,
+                      onPressed: _place == null || !_windowFits
+                          ? null
+                          : _findMatches,
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
@@ -404,6 +409,19 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  if (matching && plan != null && !_windowFits)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        _window.isValid
+                            ? noTimeFoundNote(_window, _matchMinutes)
+                            : 'Set a finish time later than the start time.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
                         ),
                       ),
                     ),
@@ -504,12 +522,79 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     Text(
       _mode == MatchMode.specificDate
           ? 'We\'ll find the best places and the best time window that '
-                'day (starts from 06:00 to 18:00).'
-          : 'We\'ll find the best day, place and time window.',
+                'day, within your training hours.'
+          : 'We\'ll find the best day, place and time window, within your '
+                'training hours.',
       style: muted,
     ),
     const SizedBox(height: 16),
+    Text('When can you train?', style: Theme.of(context).textTheme.titleMedium),
+    const SizedBox(height: 8),
+    Row(
+      children: [
+        Expanded(
+          child: _pickerTile(
+            icon: Icons.wb_twilight,
+            label: 'From ${TrainingWindow.clock(_window.fromMinutes)}',
+            onTap: () => _pickWindowTime(from: true),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _pickerTile(
+            icon: Icons.flag_outlined,
+            label: 'Until ${TrainingWindow.clock(_window.untilMinutes)}',
+            onTap: () => _pickWindowTime(from: false),
+          ),
+        ),
+      ],
+    ),
+    Text(
+      _window.isValid
+          ? 'Earliest start and latest finish.'
+          : 'The finish time must be later than the start time.',
+      style: _window.isValid
+          ? muted
+          : TextStyle(color: Theme.of(context).colorScheme.error),
+    ),
+    SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      title: const Text('Daylight only'),
+      subtitle: const Text(
+        'Only suggest sessions that start and finish before dark',
+      ),
+      value: _window.daylightOnly,
+      onChanged: (value) => _setWindow(_window.copyWith(daylightOnly: value)),
+    ),
+    const SizedBox(height: 8),
   ];
+
+  /// Minutes the current match session would take.
+  int get _matchMinutes =>
+      (_distanceKm[_sport]! * _sport.hoursPerKm * 60).round();
+
+  bool get _windowFits => _window.isValid && _window.fits(_matchMinutes);
+
+  void _setWindow(TrainingWindow window) {
+    setState(() => _window = window);
+    if (window.isValid) widget.store.rememberTrainingWindow(window);
+  }
+
+  Future<void> _pickWindowTime({required bool from}) async {
+    final minutes = from ? _window.fromMinutes : _window.untilMinutes;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60),
+      helpText: from ? 'Earliest start' : 'Latest finish',
+    );
+    if (picked == null) return;
+    final value = picked.hour * 60 + picked.minute;
+    _setWindow(
+      from
+          ? _window.copyWith(fromMinutes: value)
+          : _window.copyWith(untilMinutes: value),
+    );
+  }
 
   Widget _pickerTile({
     required IconData icon,

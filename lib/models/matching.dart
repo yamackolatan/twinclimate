@@ -23,13 +23,25 @@ class MatchWeights {
   /// Sport defaults (PRD decision 9): run → temperature & humidity, bike →
   /// wind, swim → air temperature and wind (water temperature comes later).
   factory MatchWeights.forSport(Sport sport) => switch (sport) {
-        Sport.run => const MatchWeights(
-            temperature: 0.35, humidity: 0.30, wind: 0.20, rain: 0.15),
-        Sport.bike => const MatchWeights(
-            temperature: 0.30, humidity: 0.15, wind: 0.35, rain: 0.20),
-        Sport.swim => const MatchWeights(
-            temperature: 0.40, humidity: 0.15, wind: 0.35, rain: 0.10),
-      };
+    Sport.run => const MatchWeights(
+      temperature: 0.35,
+      humidity: 0.30,
+      wind: 0.20,
+      rain: 0.15,
+    ),
+    Sport.bike => const MatchWeights(
+      temperature: 0.30,
+      humidity: 0.15,
+      wind: 0.35,
+      rain: 0.20,
+    ),
+    Sport.swim => const MatchWeights(
+      temperature: 0.40,
+      humidity: 0.15,
+      wind: 0.35,
+      rain: 0.10,
+    ),
+  };
 
   double get _total => temperature + humidity + wind + rain;
 
@@ -38,7 +50,11 @@ class MatchWeights {
     final total = _total;
     if (total <= 0) {
       return const MatchWeights(
-          temperature: 0.25, humidity: 0.25, wind: 0.25, rain: 0.25);
+        temperature: 0.25,
+        humidity: 0.25,
+        wind: 0.25,
+        rain: 0.25,
+      );
     }
     return MatchWeights(
       temperature: temperature / total,
@@ -48,14 +64,64 @@ class MatchWeights {
     );
   }
 
-  MatchWeights copyWith(
-          {double? temperature, double? humidity, double? wind, double? rain}) =>
-      MatchWeights(
-        temperature: temperature ?? this.temperature,
-        humidity: humidity ?? this.humidity,
-        wind: wind ?? this.wind,
-        rain: rain ?? this.rain,
-      );
+  MatchWeights copyWith({
+    double? temperature,
+    double? humidity,
+    double? wind,
+    double? rain,
+  }) => MatchWeights(
+    temperature: temperature ?? this.temperature,
+    humidity: humidity ?? this.humidity,
+    wind: wind ?? this.wind,
+    rain: rain ?? this.rain,
+  );
+}
+
+/// When the user can train: the earliest start and latest finish of the
+/// day (owner request), and whether sessions must be in daylight.
+class TrainingWindow {
+  const TrainingWindow({
+    this.fromMinutes = 6 * 60,
+    this.untilMinutes = 20 * 60,
+    this.daylightOnly = true,
+  });
+
+  /// Earliest start, minutes after midnight.
+  final int fromMinutes;
+
+  /// Latest finish, minutes after midnight (same day).
+  final int untilMinutes;
+
+  final bool daylightOnly;
+
+  bool get isValid => untilMinutes > fromMinutes;
+
+  /// The session fits between the earliest start and the latest finish.
+  bool fits(int durationMinutes) =>
+      untilMinutes - fromMinutes >= durationMinutes;
+
+  /// Start times to try (minutes after midnight): every hour from the
+  /// earliest start while the session still finishes in time.
+  List<int> startMinutes(int durationMinutes) => [
+    for (var m = fromMinutes; m + durationMinutes <= untilMinutes; m += 60) m,
+  ];
+
+  /// "06:00–20:00"
+  String get label => '${clock(fromMinutes)}–${clock(untilMinutes)}';
+
+  static String clock(int minutes) =>
+      '${(minutes ~/ 60).toString().padLeft(2, '0')}:'
+      '${(minutes % 60).toString().padLeft(2, '0')}';
+
+  TrainingWindow copyWith({
+    int? fromMinutes,
+    int? untilMinutes,
+    bool? daylightOnly,
+  }) => TrainingWindow(
+    fromMinutes: fromMinutes ?? this.fromMinutes,
+    untilMinutes: untilMinutes ?? this.untilMinutes,
+    daylightOnly: daylightOnly ?? this.daylightOnly,
+  );
 }
 
 /// What the user asked to match.
@@ -70,6 +136,7 @@ class MatchRequest {
     required this.date,
     required this.periodDays,
     required this.weights,
+    this.window = const TrainingWindow(),
   });
 
   final Race race;
@@ -91,6 +158,9 @@ class MatchRequest {
   final int periodDays;
 
   final MatchWeights weights;
+
+  /// When the user can train that day.
+  final TrainingWindow window;
 
   double get durationHours => distanceKm * sport.hoursPerKm;
 
@@ -120,7 +190,8 @@ class MatchTarget {
       if (leg.sport == sport && race.isMultisport) {
         return MatchTarget(
           stats: leg.stats,
-          label: '${sport.label.toLowerCase()} leg '
+          label:
+              '${sport.label.toLowerCase()} leg '
               '${race.clockAt(leg.startOffset)}–${race.clockAt(leg.endOffset)}',
           isLeg: true,
         );
@@ -157,13 +228,13 @@ class Spot {
   bool get isHome => distanceKm < 0.5;
 
   Spot copyWith({double? elevationM, String? name}) => Spot(
-        latitude: latitude,
-        longitude: longitude,
-        distanceKm: distanceKm,
-        bearingDegrees: bearingDegrees,
-        elevationM: elevationM ?? this.elevationM,
-        name: name ?? this.name,
-      );
+    latitude: latitude,
+    longitude: longitude,
+    distanceKm: distanceKm,
+    bearingDegrees: bearingDegrees,
+    elevationM: elevationM ?? this.elevationM,
+    name: name ?? this.name,
+  );
 }
 
 /// Average forecast conditions during one session window.

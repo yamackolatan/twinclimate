@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/matching.dart';
 import '../models/place.dart';
 import '../models/race.dart';
 import '../models/session.dart';
@@ -19,6 +20,9 @@ class PrefsStore {
   static const _kStartHour = 'lastStartHour';
   static const _kStartMinute = 'lastStartMinute';
   static const _kRaces = 'races';
+  static const _kTrainFrom = 'trainFromMinutes';
+  static const _kTrainUntil = 'trainUntilMinutes';
+  static const _kDaylightOnly = 'daylightOnly';
 
   static Future<PrefsStore> load() async =>
       PrefsStore._(await SharedPreferences.getInstance());
@@ -68,6 +72,27 @@ class PrefsStore {
   Future<void> rememberStartTime(int hour, int minute) async {
     await _prefs.setInt(_kStartHour, hour);
     await _prefs.setInt(_kStartMinute, minute);
+  }
+
+  /// When the user can train, for Race Matching ("ask once").
+  TrainingWindow get trainingWindow {
+    const defaults = TrainingWindow();
+    try {
+      final window = TrainingWindow(
+        fromMinutes: _prefs.getInt(_kTrainFrom) ?? defaults.fromMinutes,
+        untilMinutes: _prefs.getInt(_kTrainUntil) ?? defaults.untilMinutes,
+        daylightOnly: _prefs.getBool(_kDaylightOnly) ?? defaults.daylightOnly,
+      );
+      return window.isValid ? window : defaults;
+    } catch (_) {
+      return defaults;
+    }
+  }
+
+  Future<void> rememberTrainingWindow(TrainingWindow window) async {
+    await _prefs.setInt(_kTrainFrom, window.fromMinutes);
+    await _prefs.setInt(_kTrainUntil, window.untilMinutes);
+    await _prefs.setBool(_kDaylightOnly, window.daylightOnly);
   }
 
   /// Saved races (at most [maxRaces]), soonest first. Each carries its

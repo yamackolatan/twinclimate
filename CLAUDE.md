@@ -204,9 +204,14 @@ location+time list with scores and honest notes. ACCEPT (flexible): same but
 - **Swim:** air conditions + wind only, with a note to check open-water
   access; water temperature stays in V3.
 - **Period mode:** next 7 or 14 days (default 14).
+- **Training hours are the user's choice** (owner decision, Oct 2026): the
+  form asks "When can you train?" — earliest start and latest finish
+  (default 06:00–20:00); start times are tried hourly from the earliest
+  start while the session still finishes in time. **"Daylight only" is an
+  optional switch** (default on): when on, sessions must start and finish
+  before dark. Both are remembered on the device.
 - Built behaviour: 43 spots in 5 rings out to the travel range; sea spots
-  (forecast height 0) dropped; sessions must start and finish in daylight
-  (races are daytime events); score = 100·e^(−D²/2.88) where D is the
+  (forecast height 0) dropped; score = 100·e^(−D²/2.88) where D is the
   weighted gap measured in the race's own standard deviations (one spread
   off ≈ 70 %); sport-default weights run .35/.30/.20/.15, bike
   .30/.15/.35/.20, swim .40/.15/.35/.10 (temp/humidity/wind/rain),

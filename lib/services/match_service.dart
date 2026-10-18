@@ -33,21 +33,26 @@ class MatchService {
     }
 
     final spots = generateSpots(
-        request.home.latitude, request.home.longitude, request.rangeKm);
-    onProgress?.call('Checking ${spots.length} spots around '
-        '${request.home.name}…');
+      request.home.latitude,
+      request.home.longitude,
+      request.rangeKm,
+    );
+    onProgress?.call(
+      'Checking ${spots.length} spots around '
+      '${request.home.name}…',
+    );
 
     final now = _clock();
     final today = DateTime(now.year, now.month, now.day);
     final lastForecastDay = today.add(const Duration(days: _forecastDays - 1));
     final days = switch (request.mode) {
       MatchMode.specificDate => [
-          DateTime(request.date.year, request.date.month, request.date.day),
-        ],
+        DateTime(request.date.year, request.date.month, request.date.day),
+      ],
       MatchMode.period => [
-          for (var i = 0; i < request.periodDays && i < _forecastDays; i++)
-            today.add(Duration(days: i)),
-        ],
+        for (var i = 0; i < request.periodDays && i < _forecastDays; i++)
+          today.add(Duration(days: i)),
+      ],
     };
     // Late starts can run past midnight; fetch the next day when possible.
     final nextDay = days.last.add(const Duration(days: 1));
@@ -56,19 +61,25 @@ class MatchService {
     final forecasts = <SpotForecast>[];
     for (var i = 0; i < spots.length; i += _batchSize) {
       final batch = spots.skip(i).take(_batchSize).toList();
-      forecasts.addAll(await _retry(() => weather.fetchHourlyMany(
+      forecasts.addAll(
+        await _retry(
+          () => weather.fetchHourlyMany(
             points: [for (final s in batch) (s.latitude, s.longitude)],
             firstDay: days.first,
             lastDay: lastDay,
-          )));
+          ),
+        ),
+      );
     }
 
     // Spots in the sea (height 0) are left out; the start point stays.
     final land = [
       for (var i = 0; i < spots.length; i++)
         if (spots[i].isHome || forecasts[i].elevationM > 0)
-          (spots[i].copyWith(elevationM: forecasts[i].elevationM),
-              forecasts[i].hours),
+          (
+            spots[i].copyWith(elevationM: forecasts[i].elevationM),
+            forecasts[i].hours,
+          ),
     ];
 
     onProgress?.call('Comparing every start time with race day…');
@@ -85,6 +96,7 @@ class MatchService {
         durationMinutes: request.durationMinutes,
         target: target.stats,
         weights: request.weights,
+        window: request.window,
         notBefore: now.add(const Duration(minutes: 15)),
       );
       if (result != null) perSpot.add(result);
@@ -95,17 +107,19 @@ class MatchService {
       target: target,
       results: ranked,
       spotsChecked: land.length,
-      notes: adaptationNotes(
-        best: ranked.isEmpty ? null : ranked.first,
-        target: target.stats,
-        sport: request.sport,
-        rangeKm: request.rangeKm,
-      ),
+      notes: ranked.isEmpty
+          ? [noTimeFoundNote(request.window, request.durationMinutes)]
+          : adaptationNotes(
+              best: ranked.first,
+              target: target.stats,
+              sport: request.sport,
+              rangeKm: request.rangeKm,
+            ),
     );
   }
 
   Future<T> _retry<T>(Future<T> Function() action) async {
-    for (var attempt = 1;; attempt++) {
+    for (var attempt = 1; ; attempt++) {
       try {
         return await action();
       } on WeatherServiceException catch (e) {

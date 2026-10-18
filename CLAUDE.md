@@ -219,7 +219,10 @@ location+time list with scores and honest notes. ACCEPT (flexible): same but
 - **Top 5 = five different places**, each at its best time.
 - **Swim:** air conditions + wind only, with a note to check open-water
   access; water temperature stays in V3.
-- **Period mode:** next 7 or 14 days (default 14).
+- **Period mode:** next 7 or 14 days (default 14), **or "Choose dates"**
+  (owner request, Oct 2026): a calendar range picker limited to today …
+  today + 15 days (the forecast horizon, stated on screen); the results
+  summary reads "best day between Sat 24 Oct and Thu 29 Oct".
 - **Training hours are the user's choice** (owner decision, Oct 2026): the
   form asks "When can you train?" — earliest start and latest finish
   (default 06:00–20:00); start times are tried hourly from the earliest

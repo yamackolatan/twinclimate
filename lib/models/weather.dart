@@ -117,8 +117,7 @@ class SessionForecast {
 
   bool get humid => meanHumidityPercent >= 75;
 
-  double get meanRadiationWm2 =>
-      _mean([for (final h in hours) h.radiationWm2]);
+  double get meanRadiationWm2 => _mean([for (final h in hours) h.radiationWm2]);
 
   /// Degrees added for sunshine while exercising. The forecast's "feels
   /// like" ignores the sun (checked against the formula), yet studies show
@@ -137,8 +136,8 @@ class SessionForecast {
   /// level warmer in the wet.
   double get wetPenaltyC =>
       (totalPrecipitationMm >= 0.5 || maxPrecipProbabilityPercent >= 60)
-          ? 3
-          : 0;
+      ? 3
+      : 0;
 
   /// Felt temperature used to choose kit: "feels like" plus sun, minus wet.
   double get kitFeelsC => meanApparentC + sunBonusC - wetPenaltyC;

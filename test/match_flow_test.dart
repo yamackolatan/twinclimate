@@ -12,6 +12,7 @@ import 'package:twinclimate/screens/session_result_page.dart';
 import 'package:twinclimate/services/match_service.dart';
 import 'package:twinclimate/services/place_namer.dart';
 import 'package:twinclimate/services/prefs_store.dart';
+import 'package:twinclimate/services/weather_service.dart';
 
 import 'fingerprint_test.dart' show fakeHistory;
 import 'race_flow_test.dart' show FakeRaceWeather;
@@ -100,7 +101,8 @@ Race kalmarWithFingerprint() {
 void main() {
   final now = DateTime(2026, 10, 18, 7, 0);
 
-  MatchRequest request(MatchMode mode, {double rangeKm = 150}) =>
+  MatchRequest request(MatchMode mode,
+          {double rangeKm = 150, DateTime? periodStart, int periodDays = 14}) =>
       MatchRequest(
         race: kalmarWithFingerprint(),
         sport: Sport.run,
@@ -109,7 +111,8 @@ void main() {
         rangeKm: rangeKm,
         mode: mode,
         date: DateTime(2026, 10, 24),
-        periodDays: 14,
+        periodDays: periodDays,
+        periodStart: periodStart,
         weights: MatchWeights.forSport(Sport.run),
       );
 
@@ -148,6 +151,29 @@ void main() {
         expect(day, inInclusiveRange(18, 31));
       }
     });
+
+    test('own dates from the calendar: only those days are searched',
+        () async {
+      final weather = FakeMatchWeather();
+      final result = await MatchService(weather, clock: () => now).run(
+          request(MatchMode.period,
+              periodStart: DateTime(2026, 10, 23), periodDays: 3));
+      expect(result.results, hasLength(5));
+      for (final r in result.results) {
+        expect(r.best.start.day, inInclusiveRange(23, 25));
+      }
+    });
+
+    test('dates beyond the 16-day forecast get a clear message', () async {
+      await expectLater(
+        MatchService(FakeMatchWeather(), clock: () => now).run(request(
+            MatchMode.period,
+            periodStart: DateTime(2026, 11, 20),
+            periodDays: 3)),
+        throwsA(isA<WeatherServiceException>().having(
+            (e) => e.message, 'message', contains('16 days ahead'))),
+      );
+    });
   });
 
   testWidgets('switch to Match my race, search, see places and time windows',
@@ -185,10 +211,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.trainingWindow.daylightOnly, isTrue);
 
-    // Period mode offers 7 or 14 days.
+    // Period mode offers 7 or 14 days, or the user's own dates.
     await tester.tap(find.text('Best day in a period'));
     await tester.pumpAndSettle();
     expect(find.text('Next 14 days'), findsOneWidget);
+    expect(find.text('Choose dates'), findsOneWidget);
+    expect(find.textContaining('Forecasts reach 16 days ahead'),
+        findsOneWidget);
     await tester.tap(find.text('Specific date'));
     await tester.pumpAndSettle();
 
@@ -212,6 +241,46 @@ void main() {
     await tester.tap(find.text('See forecast & kit').first);
     await tester.pumpAndSettle();
     expect(find.byType(SessionResultPage), findsOneWidget);
+  });
+
+  testWidgets('pick your own dates from the calendar', (tester) async {
+    tester.view.physicalSize = const Size(1000, 3200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({});
+    final store = await PrefsStore.load();
+    await store.saveRace(kalmarWithFingerprint());
+    await tester.pumpWidget(MaterialApp(
+      home: QuickSessionPage(
+          store: store, weather: FakeMatchWeather(), namer: FakeNamer()),
+    ));
+    await tester.tap(find.text('Match my race'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Best day in a period'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Choose dates'));
+    await tester.pumpAndSettle();
+    expect(find.text('Pick the days you could train'), findsOneWidget);
+    await tester.tap(find.text('Use these dates'));
+    await tester.pumpAndSettle();
+
+    // The chip now shows the chosen range (today + 6 days by default).
+    final today = DateTime.now();
+    final start = DateTime(today.year, today.month, today.day);
+    final end = start.add(const Duration(days: 6));
+    final label = '${formatDay(start)} – ${formatDay(end)}';
+    expect(find.text(label), findsOneWidget);
+
+    await tester.tap(find.text('Belgrad Forest'));
+    await tester.pump();
+    await tester.tap(find.text('Find race-like conditions'));
+    await tester.pumpAndSettle();
+    expect(
+        find.textContaining(
+            'best day between ${formatDay(start)} and ${formatDay(end)}'),
+        findsOneWidget);
+    expect(find.textContaining('% match'), findsNWidgets(5));
   });
 
   testWidgets('a training window shorter than the session blocks the search',

@@ -1,5 +1,6 @@
 import '../logic/match_engine.dart';
 import '../models/matching.dart';
+import '../models/session.dart';
 import '../models/weather.dart';
 import 'weather_service.dart';
 
@@ -50,10 +51,19 @@ class MatchService {
         DateTime(request.date.year, request.date.month, request.date.day),
       ],
       MatchMode.period => [
-        for (var i = 0; i < request.periodDays && i < _forecastDays; i++)
-          today.add(Duration(days: i)),
+        for (var i = 0; i < request.periodDays; i++)
+          if (_periodDay(request, today, i) case final day
+              when !day.isBefore(today) && !day.isAfter(lastForecastDay))
+            day,
       ],
     };
+    if (days.isEmpty) {
+      throw WeatherServiceException(
+        'Those dates are outside the forecast. Forecasts reach 16 days '
+        'ahead — pick dates up to ${formatDay(lastForecastDay)}.',
+        retryable: false,
+      );
+    }
     // Late starts can run past midnight; fetch the next day when possible.
     final nextDay = days.last.add(const Duration(days: 1));
     final lastDay = nextDay.isAfter(lastForecastDay) ? days.last : nextDay;
@@ -116,6 +126,11 @@ class MatchService {
               rangeKm: request.rangeKm,
             ),
     );
+  }
+
+  static DateTime _periodDay(MatchRequest r, DateTime today, int i) {
+    final start = r.periodStart ?? today;
+    return DateTime(start.year, start.month, start.day + i);
   }
 
   Future<T> _retry<T>(Future<T> Function() action) async {

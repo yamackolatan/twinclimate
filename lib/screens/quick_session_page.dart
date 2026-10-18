@@ -53,6 +53,10 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
   double _rangeKm = 50;
   MatchMode _mode = MatchMode.specificDate;
   int _periodDays = 14;
+
+  /// The user's own dates for "Best day in a period"; null when a
+  /// "Next 7/14 days" chip is chosen.
+  DateTimeRange? _customRange;
   late TrainingWindow _window = widget.store.trainingWindow;
   final Map<Sport, MatchWeights> _weights = {
     for (final sport in Sport.values) sport: MatchWeights.forSport(sport),
@@ -188,7 +192,10 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
             rangeKm: _rangeKm,
             mode: _mode,
             date: _date,
-            periodDays: _periodDays,
+            periodDays: _customRange == null
+                ? _periodDays
+                : _customRange!.duration.inDays + 1,
+            periodStart: _customRange?.start,
             weights: _weights[_sport]!,
             window: _window,
           ),
@@ -563,13 +570,28 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     else
       Wrap(
         spacing: 8,
+        runSpacing: 8,
         children: [
           for (final days in const [7, 14])
             ChoiceChip(
               label: Text('Next $days days'),
-              selected: _periodDays == days,
-              onSelected: (_) => setState(() => _periodDays = days),
+              selected: _customRange == null && _periodDays == days,
+              onSelected: (_) => setState(() {
+                _periodDays = days;
+                _customRange = null;
+              }),
             ),
+          ChoiceChip(
+            avatar: const Icon(Icons.date_range, size: 18),
+            label: Text(
+              _customRange == null
+                  ? 'Choose dates'
+                  : '${formatDay(_customRange!.start)} – '
+                        '${formatDay(_customRange!.end)}',
+            ),
+            selected: _customRange != null,
+            onSelected: (_) => _pickPeriod(),
+          ),
         ],
       ),
     const SizedBox(height: 4),
@@ -578,7 +600,8 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
           ? 'We\'ll find the best places and the best time window that '
                 'day, within your training hours.'
           : 'We\'ll find the best day, place and time window, within your '
-                'training hours.',
+                'training hours. Forecasts reach 16 days ahead, so dates go '
+                'up to ${formatDay(_lastForecastDay)}.',
       style: muted,
     ),
     const SizedBox(height: 16),
@@ -622,6 +645,38 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     ),
     const SizedBox(height: 8),
   ];
+
+  DateTime get _today {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  /// Open-Meteo forecasts reach 16 days: today + 15.
+  DateTime get _lastForecastDay => _today.add(const Duration(days: 15));
+
+  /// Lets the user pick their own period from the calendar (owner request).
+  Future<void> _pickPeriod() async {
+    final today = _today;
+    final last = _lastForecastDay;
+    var initial = _customRange;
+    if (initial == null ||
+        initial.start.isBefore(today) ||
+        initial.end.isAfter(last)) {
+      initial = DateTimeRange(
+        start: today,
+        end: today.add(const Duration(days: 6)),
+      );
+    }
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: today,
+      lastDate: last,
+      initialDateRange: initial,
+      helpText: 'Pick the days you could train',
+      saveText: 'Use these dates',
+    );
+    if (picked != null) setState(() => _customRange = picked);
+  }
 
   /// Minutes the current match session would take.
   int get _matchMinutes =>

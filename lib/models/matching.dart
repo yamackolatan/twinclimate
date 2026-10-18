@@ -135,6 +135,7 @@ class MatchRequest {
     required this.mode,
     required this.date,
     required this.periodDays,
+    this.periodStart,
     required this.weights,
     this.window = const TrainingWindow(),
   });
@@ -154,8 +155,19 @@ class MatchRequest {
   /// The training day for [MatchMode.specificDate].
   final DateTime date;
 
-  /// Days to scan from today for [MatchMode.period].
+  /// Days to scan for [MatchMode.period], from [periodStart].
   final int periodDays;
+
+  /// First day of the period; null means today ("Next 7/14 days"). Set
+  /// when the user picks their own dates from the calendar.
+  final DateTime? periodStart;
+
+  /// Last day of the period (inclusive).
+  DateTime get periodEnd {
+    final now = DateTime.now();
+    final start = periodStart ?? DateTime(now.year, now.month, now.day);
+    return DateTime(start.year, start.month, start.day + periodDays - 1);
+  }
 
   final MatchWeights weights;
 

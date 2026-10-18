@@ -105,6 +105,7 @@ class _MatchResultPageState extends State<MatchResultPage> {
       mode: _request.mode,
       date: _request.date,
       periodDays: _request.periodDays,
+      periodStart: _request.periodStart,
       weights: _request.weights,
       window: _request.window,
     );
@@ -212,7 +213,10 @@ class _MatchResultPageState extends State<MatchResultPage> {
     final target = _result?.target ?? MatchTarget.forRace(r.race, r.sport);
     final when = r.mode == MatchMode.specificDate
         ? formatDay(r.date)
-        : 'best day in the next ${r.periodDays} days';
+        : r.periodStart == null
+        ? 'best day in the next ${r.periodDays} days'
+        : 'best day between ${formatDay(r.periodStart!)} and '
+              '${formatDay(r.periodEnd)}';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

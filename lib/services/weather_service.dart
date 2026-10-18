@@ -29,8 +29,11 @@ abstract class WeatherService {
 }
 
 class WeatherServiceException implements Exception {
-  WeatherServiceException(this.message);
+  WeatherServiceException(this.message, {this.retryable = true});
   final String message;
+
+  /// False when trying again soon cannot help (e.g. the daily limit).
+  final bool retryable;
 
   @override
   String toString() => message;
@@ -173,7 +176,7 @@ class OpenMeteoWeatherService implements WeatherService {
     try {
       response = await _client
           .get(uri)
-          .timeout(const Duration(seconds: 20));
+          .timeout(const Duration(seconds: 15));
     } catch (_) {
       throw WeatherServiceException(
           'Could not reach the weather service for the $what. '
@@ -182,7 +185,8 @@ class OpenMeteoWeatherService implements WeatherService {
     if (response.statusCode == 429) {
       throw WeatherServiceException(
           'The free weather service has had too many requests from this '
-          'internet connection today. Try again later.');
+          'internet connection today. Try again later.',
+          retryable: false);
     }
     if (response.statusCode != 200) {
       throw WeatherServiceException(

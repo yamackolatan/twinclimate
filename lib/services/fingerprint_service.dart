@@ -6,10 +6,16 @@ import 'weather_service.dart';
 
 /// Downloads a race's 10-year history and turns it into a fingerprint.
 class FingerprintService {
-  FingerprintService(this.weather, {DateTime Function()? clock})
-      : _clock = clock ?? DateTime.now;
+  FingerprintService(
+    this.weather, {
+    DateTime Function()? clock,
+    this.attempts = 3,
+    this.retryDelay = const Duration(seconds: 2),
+  }) : _clock = clock ?? DateTime.now;
 
   final WeatherService weather;
+  final int attempts;
+  final Duration retryDelay;
   final DateTime Function() _clock;
 
   /// [onProgress] is called with (years done, years total) as downloads
@@ -40,16 +46,18 @@ class FingerprintService {
     );
   }
 
-  /// One retry per year smooths over brief network hiccups.
+  /// Up to [attempts] tries per year: on weak connections an occasional
+  /// request stalls, and one failed year would otherwise sink the result.
   Future<List<PastHour>> _fetchYear(Race race, int year) async {
     final (first, last) = historyRange(race, year);
-    try {
-      return await weather.fetchHistory(
-          place: race.place, firstDay: first, lastDay: last);
-    } on WeatherServiceException {
-      await Future<void>.delayed(const Duration(seconds: 2));
-      return weather.fetchHistory(
-          place: race.place, firstDay: first, lastDay: last);
+    for (var attempt = 1;; attempt++) {
+      try {
+        return await weather.fetchHistory(
+            place: race.place, firstDay: first, lastDay: last);
+      } on WeatherServiceException catch (e) {
+        if (!e.retryable || attempt >= attempts) rethrow;
+        await Future<void>.delayed(retryDelay * attempt);
+      }
     }
   }
 }

@@ -117,5 +117,7 @@ String sourceNote(Race race, RaceFingerprint fingerprint) {
       '${fingerprint.firstYear}–${fingerprint.lastYear}, race hours only '
       '(${fingerprint.overall.hourCount} hourly readings). Ranges show where '
       'most race days fall. Rain chance is the share of those days with at '
-      'least 1 mm of rain during the race hours.';
+      'least 1 mm of rain during the race hours. This is modelled weather on '
+      'a grid of roughly 9 km, so at steep coasts or mountains it can differ '
+      'from local weather stations by a degree or two.';
 }

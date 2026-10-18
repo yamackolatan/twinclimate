@@ -214,6 +214,50 @@ void main() {
     expect(progress.last, 10);
     expect(fp.key, ironmanKalmar().fingerprintKey);
   });
+
+  test('two stalled requests in a row for a year still recover', () async {
+    final flaky = FlakyHistoryService(2);
+    final fp = await FingerprintService(flaky,
+            clock: () => today, retryDelay: Duration.zero)
+        .compute(ironmanKalmar());
+    expect(fp.yearCount, 10);
+    expect(flaky.requests, hasLength(30));
+  });
+
+  test('the daily limit is not retried pointlessly', () async {
+    final limited = FlakyHistoryService(5, retryable: false);
+    await expectLater(
+      FingerprintService(limited,
+              clock: () => today, retryDelay: Duration.zero)
+          .compute(ironmanKalmar()),
+      throwsA(isA<WeatherServiceException>()),
+    );
+    expect(limited.requests, hasLength(10));
+  });
+}
+
+class FlakyHistoryService extends FakeHistoryService {
+  FlakyHistoryService(this.failuresPerYear, {this.retryable = true});
+
+  final int failuresPerYear;
+  final bool retryable;
+  final _failures = <int, int>{};
+
+  @override
+  Future<List<PastHour>> fetchHistory({
+    required Place place,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  }) async {
+    final seen = _failures[firstDay.year] ?? 0;
+    if (seen < failuresPerYear) {
+      _failures[firstDay.year] = seen + 1;
+      requests.add((firstDay, lastDay));
+      throw WeatherServiceException('stalled', retryable: retryable);
+    }
+    return super.fetchHistory(
+        place: place, firstDay: firstDay, lastDay: lastDay);
+  }
 }
 
 Race _runRace(DateTime date, {int startHour = 9, int minutes = 60}) => Race(

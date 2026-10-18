@@ -109,6 +109,18 @@ void main() {
     expect(weather.requests, hasLength(10));
   });
 
+  testWidgets('damaged saved data never blanks the app', (tester) async {
+    final store = await _freshStore({
+      'races': ['not', 'a', 'race'],
+      'favouritePlaces': 42,
+    });
+    expect(store.races, isEmpty);
+    expect(store.savedPlaces, isEmpty);
+    await _pumpHome(tester, store, FakeRaceWeather());
+    expect(find.text('Quick Session'), findsOneWidget);
+    expect(find.text('Training for a race?'), findsOneWidget);
+  });
+
   testWidgets('three races is the limit', (tester) async {
     final store = await _freshStore();
     for (final id in ['a', 'b', 'c']) {

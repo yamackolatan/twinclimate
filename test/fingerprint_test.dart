@@ -61,6 +61,14 @@ class FakeHistoryService implements WeatherService {
 
   @override
   Future<List<Place>> searchPlaces(String query) => throw UnimplementedError();
+
+  @override
+  Future<List<SpotForecast>> fetchHourlyMany({
+    required List<(double, double)> points,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  }) =>
+      throw UnimplementedError();
 }
 
 void main() {

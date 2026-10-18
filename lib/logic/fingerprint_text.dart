@@ -102,11 +102,14 @@ List<(String, String)> conditionRows(ConditionStats stats) {
 
 /// One-line leg summary, e.g. "Bike 08:15–14:15: 16–21°C, 10–20 km/h wind,
 /// 25% rain chance".
-String legLine(LegFingerprint leg) =>
-    '${temperatureRange(leg.stats.temperature)}, '
-    '${humidityWord(leg.stats.humidity.mean)}, '
-    '${windRange(leg.stats.wind)} wind, '
-    '${rainChanceText(leg.stats)} rain chance';
+String legLine(LegFingerprint leg) => conditionsLine(leg.stats);
+
+/// "16–21°C, humid, 10–20 km/h wind, 25% rain chance"
+String conditionsLine(ConditionStats stats) =>
+    '${temperatureRange(stats.temperature)}, '
+    '${humidityWord(stats.humidity.mean)}, '
+    '${windRange(stats.wind)} wind, '
+    '${rainChanceText(stats)} rain chance';
 
 /// "Based on hourly weather records for 24 Aug – 3 Sep, 2016–2025, ..."
 String sourceNote(Race race, RaceFingerprint fingerprint) {

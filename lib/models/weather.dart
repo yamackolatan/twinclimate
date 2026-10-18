@@ -31,6 +31,15 @@ class HourWeather {
   final bool isDay;
 }
 
+/// Forecast for one coordinate of a multi-spot request, with the ground
+/// height the weather service used (0 over the sea).
+class SpotForecast {
+  const SpotForecast({required this.elevationM, required this.hours});
+
+  final double elevationM;
+  final List<HourWeather> hours;
+}
+
 /// One hour of recorded (past) weather, used for race fingerprints.
 ///
 /// [time] is the place's local wall-clock time stored as a UTC DateTime,

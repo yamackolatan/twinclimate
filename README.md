@@ -31,8 +31,10 @@ the same codebase.
 2. ✅ **Target races** — save up to 3 races and get each one's typical
    race-day weather from 10 years of history, with separate swim / bike /
    run summaries.
-3. **Race Matching** — find where and when, within travel range,
-   conditions best match race day.
+3. ✅ **Race Matching** — find where and when, within travel range,
+   conditions best match race day: top 5 places, each with a recommended
+   time window and a match score, for a specific date or the best day in
+   the next 7–14 days.
 4. **Comfort profile** — the app learns whether you run hot or cold from
    2-tap post-session feedback.
 5. **Packing reminder** — the kit checklist pings you the evening before.

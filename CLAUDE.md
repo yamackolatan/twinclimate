@@ -190,6 +190,33 @@ ACCEPT (fixed): race=Kalmar, from Istanbul, range 150 km, Saturday → ranked
 location+time list with scores and honest notes. ACCEPT (flexible): same but
 "next 14 days" → day+location+time ranking.
 
+**Owner decisions for F3 (confirmed Oct 2026 — build to these):**
+- **Match the same leg as the training sport** (training run → race's run
+  leg); if the race lacks that sport, the whole race window.
+- **Advise a time window, not just a start time:** each result shows the
+  best start plus the run of neighbouring start times scoring within 8
+  points of it (never below 70 %; within 5 points for weak matches), as
+  "Start between 07:00 and 09:00 → you'd train 07:00–10:30", and a small
+  score bar per start time.
+- **Place names from OpenStreetMap** (Nominatim reverse geocoding, max 1
+  request/second, only for the 5 results); fall back to "38 km north".
+- **Top 5 = five different places**, each at its best time.
+- **Swim:** air conditions + wind only, with a note to check open-water
+  access; water temperature stays in V3.
+- **Period mode:** next 7 or 14 days (default 14).
+- Built behaviour: 43 spots in 5 rings out to the travel range; sea spots
+  (forecast height 0) dropped; sessions must start and finish in daylight
+  (races are daytime events); score = 100·e^(−D²/2.88) where D is the
+  weighted gap measured in the race's own standard deviations (one spread
+  off ≈ 70 %); sport-default weights run .35/.30/.20/.15, bike
+  .30/.15/.35/.20, swim .40/.15/.35/.10 (temp/humidity/wind/rain),
+  adjustable under "Advanced: what matters most".
+- Code: `lib/models/matching.dart`, `lib/logic/match_engine.dart` (pure
+  maths), `lib/logic/match_text.dart`, `lib/services/match_service.dart`,
+  `lib/services/place_namer.dart`, `lib/screens/match_result_page.dart`.
+  `tool/check_real_matching.dart` runs the acceptance cases on live
+  forecasts.
+
 ### F4 — Comfort profile & feedback loop
 - After a session's start time passes, the home screen shows the 2-tap
   feedback card (see decision 4). Store each response with that session's

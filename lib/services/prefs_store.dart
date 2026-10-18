@@ -26,9 +26,9 @@ class PrefsStore {
   /// Places the user has searched and used, most recent first. Presets are
   /// not stored — they're always available from [presetPlaces].
   List<Place> get savedPlaces {
-    final encoded = _prefs.getString(_kPlaces);
-    if (encoded == null) return const [];
     try {
+      final encoded = _prefs.getString(_kPlaces);
+      if (encoded == null) return const [];
       return Place.decodeList(encoded);
     } catch (_) {
       return const [];
@@ -73,11 +73,13 @@ class PrefsStore {
   /// Saved races (at most [maxRaces]), soonest first. Each carries its
   /// cached fingerprint, so reopening the app never recomputes it.
   List<Race> get races {
-    final encoded = _prefs.getString(_kRaces);
-    if (encoded == null) return const [];
     try {
+      final encoded = _prefs.getString(_kRaces);
+      if (encoded == null) return const [];
       return Race.decodeList(encoded)..sort((a, b) => a.date.compareTo(b.date));
     } catch (_) {
+      // Damaged storage must never blank the app; it then acts as if no
+      // race were saved.
       return const [];
     }
   }

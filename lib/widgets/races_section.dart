@@ -11,10 +11,18 @@ import '../services/weather_service.dart';
 /// "My races" on the home screen: up to [maxRaces] race cards, or an
 /// optional invitation to add one. The app works fully without a race.
 class RacesSection extends StatefulWidget {
-  const RacesSection({super.key, required this.store, required this.weather});
+  const RacesSection({
+    super.key,
+    required this.store,
+    required this.weather,
+    this.onChanged,
+  });
 
   final PrefsStore store;
   final WeatherService weather;
+
+  /// Called after races may have been added, edited or deleted.
+  final VoidCallback? onChanged;
 
   @override
   State<RacesSection> createState() => _RacesSectionState();
@@ -30,6 +38,7 @@ class _RacesSectionState extends State<RacesSection> {
     );
     if (!mounted) return;
     setState(() {});
+    widget.onChanged?.call();
     final race = outcome?.race;
     // Straight to the race-day climate, which starts computing at once.
     if (race != null) await _open(race);
@@ -44,6 +53,7 @@ class _RacesSectionState extends State<RacesSection> {
       ),
     ));
     if (mounted) setState(() {});
+    widget.onChanged?.call();
   }
 
   @override

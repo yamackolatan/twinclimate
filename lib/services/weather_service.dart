@@ -26,6 +26,15 @@ abstract class WeatherService {
     required DateTime firstDay,
     required DateTime lastDay,
   });
+
+  /// Hourly forecasts for several coordinates at once, one per point in
+  /// the same order, each in that point's local time and with its ground
+  /// height (0 over the sea).
+  Future<List<SpotForecast>> fetchHourlyMany({
+    required List<(double, double)> points,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  });
 }
 
 class WeatherServiceException implements Exception {
@@ -95,12 +104,48 @@ class OpenMeteoWeatherService implements WeatherService {
       'end_date': _dateParam(lastDay),
     });
     final json = await _getJson(uri, 'forecast');
-    final hourly = json['hourly'] as Map<String, dynamic>?;
-    final times = hourly?['time'] as List?;
-    if (hourly == null || times == null || times.isEmpty) {
+    final hours = _parseForecast(json);
+    if (hours.isEmpty) {
       throw WeatherServiceException(
           'The forecast came back empty for this date.');
     }
+    return hours;
+  }
+
+  @override
+  Future<List<SpotForecast>> fetchHourlyMany({
+    required List<(double, double)> points,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  }) async {
+    final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
+      'latitude': points.map((p) => p.$1.toStringAsFixed(4)).join(','),
+      'longitude': points.map((p) => p.$2.toStringAsFixed(4)).join(','),
+      'hourly': _hourlyVariables.join(','),
+      'timezone': 'auto',
+      'start_date': _dateParam(firstDay),
+      'end_date': _dateParam(lastDay),
+    });
+    final decoded = await _get(uri, 'forecast');
+    // One point comes back as an object, several as a list.
+    final items = decoded is List ? decoded : [decoded];
+    if (items.length != points.length) {
+      throw WeatherServiceException(
+          'The forecast came back incomplete. Try again in a moment.');
+    }
+    return [
+      for (final item in items.cast<Map<String, dynamic>>())
+        SpotForecast(
+          elevationM: (item['elevation'] as num?)?.toDouble() ?? 1,
+          hours: _parseForecast(item),
+        ),
+    ];
+  }
+
+  static List<HourWeather> _parseForecast(Map<String, dynamic> json) {
+    final hourly = json['hourly'] as Map<String, dynamic>?;
+    final times = hourly?['time'] as List?;
+    if (hourly == null || times == null) return const [];
     return [
       for (var i = 0; i < times.length; i++)
         HourWeather(
@@ -171,7 +216,10 @@ class OpenMeteoWeatherService implements WeatherService {
     return value is num ? value.toDouble() : null;
   }
 
-  Future<Map<String, dynamic>> _getJson(Uri uri, String what) async {
+  Future<Map<String, dynamic>> _getJson(Uri uri, String what) async =>
+      await _get(uri, what) as Map<String, dynamic>;
+
+  Future<Object?> _get(Uri uri, String what) async {
     final http.Response response;
     try {
       response = await _client
@@ -193,7 +241,7 @@ class OpenMeteoWeatherService implements WeatherService {
           'The weather service answered with an error (code '
           '${response.statusCode}) for the $what. Try again in a moment.');
     }
-    return jsonDecode(response.body) as Map<String, dynamic>;
+    return jsonDecode(response.body);
   }
 
   /// Far-horizon hours occasionally come back null; treat those as 0

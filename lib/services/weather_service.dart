@@ -65,6 +65,7 @@ class OpenMeteoWeatherService implements WeatherService {
     'wind_gusts_10m',
     'weather_code',
     'is_day',
+    'shortwave_radiation',
   ];
 
   @override
@@ -164,6 +165,7 @@ class OpenMeteoWeatherService implements WeatherService {
           gustKmh: _number(hourly['wind_gusts_10m'], i),
           weatherCode: _number(hourly['weather_code'], i).round(),
           isDay: _number(hourly['is_day'], i) > 0,
+          radiationWm2: _number(hourly['shortwave_radiation'], i),
         ),
     ];
   }

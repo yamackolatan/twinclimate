@@ -133,6 +133,22 @@ ACCEPT: search "Belgrad" → pick → tomorrow 08:00 → 15 km run → screen sh
 hourly cards for ~08:00–10:00, a feels-like line, and a 5-section kit list
 with reasons. Works in web preview.
 
+**Kit ranges (owner request + research, Oct 2026 — build to these):**
+- 10 felt-temperature ranges: <−5, −5–0, 0–4, 4–7, 7–10, 10–13, 13–16,
+  16–20, 20–24, 24+ °C. Narrow (~3 °C) where kit changes often (cycling
+  guides change kit every 2–3 °C between ~7 and 21 °C; owner: 10–12 feels
+  the same, 13–15 needs other kit; below 10 every degree counts).
+- Felt temperature for kit = Open-Meteo "feels like" (already includes
+  wind chill and humidity, but verified NOT to include sun) **+3 °C in
+  strong sun (≥500 W/m²), +1.5 °C in moderate sun (≥250 W/m²), −3 °C when
+  wet** (rain ≥0.5 mm or ≥60 % chance). Reasons say so ("Session feels
+  like 11°, more like 14° in the sun"). Sport baselines unchanged (run
+  torso/legs +3; bike torso/hands −3, head/feet −2).
+- Bike tops follow the cycling guides after the −3 baseline: short sleeves
+  ~19–27 °C air, + arm warmers 16–19, + gilet 13–16, long-sleeve thermal +
+  gilet 10–13, then base layer + jackets. `tool/print_kit_table.dart`
+  prints the table for review.
+
 ### F2 — Target race & fingerprint
 - Add/edit a target race: name, place (geocoded), date, race start time +
   expected duration window, sport(s). Stored locally; deletable; app fully
@@ -245,10 +261,13 @@ kit shows a lighter torso item with a personalized reason.
   is skipped when the **packing checklist** already shows the suggestion
   was packed (ticks are saved and double as "what you wore"). Too warm in
   something warmer, or too cold in something lighter, is not learned from.
-- **Learning:** zones below 5 °C / 5–15 °C / 15 °C+ (felt temperature);
-  two matching reports = one step (6 °C ≈ one gear band), "just right"
-  cancels one report, max ±2 steps; "Everywhere" counts for all parts;
-  separate profiles per sport.
+- **Learning (updated Oct 2026, owner asked for finer ranges):** 8 ranges
+  that follow the kit ranges — below 0, 0–4, 4–7, 7–10, 10–13, 13–16,
+  16–20, above 20 °C (felt temperature). A report counts fully in its own
+  range and half in each neighbouring range (so learning stays quick);
+  two matching reports = one step = one kit range lighter/warmer; "just
+  right" cancels one report; max ±2 steps; "Everywhere" counts for all
+  parts; separate profiles per sport.
 - **Weather anchor:** the session's actual recorded "feels like" (forecast
   API, past days), falling back to the forecast shown; the message says
   when the two differed by 3 °C or more.

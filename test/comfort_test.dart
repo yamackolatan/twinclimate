@@ -63,16 +63,24 @@ SessionRecord session({
 
 void main() {
   test('temperature zones (owner decision 3)', () {
-    expect(TempZone.of(4.9), TempZone.cold);
-    expect(TempZone.of(5), TempZone.mild);
-    expect(TempZone.of(14.9), TempZone.mild);
-    expect(TempZone.of(15), TempZone.warm);
-    expect(TempZone.warm.phrase, 'above 15°C');
+    expect(TempZone.of(-0.1), TempZone.freezing);
+    expect(TempZone.of(3.9), TempZone.veryCold);
+    expect(TempZone.of(6.9), TempZone.cold);
+    expect(TempZone.of(9.9), TempZone.chilly);
+    // Owner: 10-12 feels much the same, 13-15 needs other kit.
+    expect(TempZone.of(10), TempZone.cool);
+    expect(TempZone.of(12.9), TempZone.cool);
+    expect(TempZone.of(13), TempZone.mild);
+    expect(TempZone.of(15.9), TempZone.mild);
+    expect(TempZone.of(16), TempZone.mildWarm);
+    expect(TempZone.of(20), TempZone.warm);
+    expect(TempZone.mild.phrase, 'between 13 and 16°C');
+    expect(TempZone.warm.phrase, 'above 20°C');
   });
 
   group('learning (owner decision 2)', () {
     LearnedComfort torsoWarm(List<FeedbackEntry> f) =>
-        profileOf(f).learned(Sport.run, BodyPart.torso, TempZone.warm);
+        profileOf(f).learned(Sport.run, BodyPart.torso, TempZone.mildWarm);
 
     test('one report changes nothing yet; two make one step', () {
       expect(torsoWarm([fb(Feeling.tooWarm)]).steps, 0);
@@ -85,7 +93,7 @@ void main() {
         fb(Feeling.tooWarm),
         fb(Feeling.justRight),
       ]);
-      expect(l.net, 1);
+      expect(l.net, 2);
       expect(l.steps, 0);
     });
 
@@ -99,22 +107,42 @@ void main() {
         fb(Feeling.tooCold, part: BodyPart.hands, feelsC: 2),
         fb(Feeling.tooCold, part: BodyPart.hands, feelsC: 3),
       ]);
-      expect(p.learned(Sport.run, BodyPart.hands, TempZone.cold).steps, -1);
-      expect(p.shiftC(Sport.run, BodyPart.hands, TempZone.cold), -6);
+      expect(p.learned(Sport.run, BodyPart.hands, TempZone.veryCold).steps, -1);
+      expect(p.steps(Sport.run, BodyPart.hands, TempZone.veryCold), -1);
     });
 
     test('"everywhere" counts for all five body parts', () {
       final p = profileOf(
           [fb(Feeling.tooWarm, part: null), fb(Feeling.tooWarm, part: null)]);
       for (final part in BodyPart.values) {
-        expect(p.learned(Sport.run, part, TempZone.warm).steps, 1);
+        expect(p.learned(Sport.run, part, TempZone.mildWarm).steps, 1);
       }
     });
 
     test('zones and sports are learned separately', () {
       final p = profileOf([fb(Feeling.tooWarm), fb(Feeling.tooWarm)]);
-      expect(p.learned(Sport.run, BodyPart.torso, TempZone.mild).steps, 0);
-      expect(p.learned(Sport.bike, BodyPart.torso, TempZone.warm).steps, 0);
+      expect(p.learned(Sport.run, BodyPart.torso, TempZone.cold).steps, 0);
+      expect(p.learned(Sport.bike, BodyPart.torso, TempZone.mildWarm).steps, 0);
+    });
+
+    test('neighbouring ranges get half weight, so learning stays quick', () {
+      // Two reports at 17° (16-20 range) and one at 14° (13-16 range).
+      final p = profileOf([
+        fb(Feeling.tooWarm),
+        fb(Feeling.tooWarm),
+      ]);
+      final next = p.learned(Sport.run, BodyPart.torso, TempZone.mild);
+      expect(next.net, 2); // half of two reports
+      expect(next.steps, 0);
+      final q = profileOf([
+        fb(Feeling.tooWarm),
+        fb(Feeling.tooWarm),
+        fb(Feeling.tooWarm, feelsC: 14),
+      ]);
+      // One own report + two neighbouring ones = one step.
+      expect(q.learned(Sport.run, BodyPart.torso, TempZone.mild).steps, 1);
+      // Two ranges away: untouched.
+      expect(q.learned(Sport.run, BodyPart.torso, TempZone.chilly).net, 0);
     });
 
     test('discomfort explained by the user\'s own clothes is not learned', () {
@@ -128,7 +156,7 @@ void main() {
         fb(Feeling.tooCold, worn: Worn.warmer),
         fb(Feeling.tooCold, worn: Worn.warmer),
       ]);
-      expect(q.learned(Sport.run, BodyPart.torso, TempZone.warm).steps, -1);
+      expect(q.learned(Sport.run, BodyPart.torso, TempZone.mildWarm).steps, -1);
     });
 
     test('"Forget" ignores answers up to that moment', () {
@@ -136,10 +164,10 @@ void main() {
       final b = fb(Feeling.tooWarm, date: DateTime(2026, 10, 2));
       final c = fb(Feeling.tooWarm, date: DateTime(2026, 10, 5));
       final p = profileOf([a, b, c], forgotten: {
-        ComfortProfile.key(Sport.run, BodyPart.torso, TempZone.warm):
+        ComfortProfile.key(Sport.run, BodyPart.torso, TempZone.mildWarm):
             DateTime(2026, 10, 3),
       });
-      expect(p.learned(Sport.run, BodyPart.torso, TempZone.warm).net, 1);
+      expect(p.learned(Sport.run, BodyPart.torso, TempZone.mildWarm).net, 2);
     });
 
     test('slider adds to what was learned, capped at two steps', () {
@@ -147,7 +175,7 @@ void main() {
           manual: {
             Sport.run: {BodyPart.torso: 2},
           });
-      expect(p.steps(Sport.run, BodyPart.torso, TempZone.warm), 2);
+      expect(p.steps(Sport.run, BodyPart.torso, TempZone.mildWarm), 2);
     });
   });
 
@@ -160,10 +188,11 @@ void main() {
           comfort: profileOf([fb(Feeling.tooWarm), fb(Feeling.tooWarm)]));
       final before = itemsFor(standard, BodyPart.torso).first;
       final after = itemsFor(personal, BodyPart.torso).first;
-      expect(before.name, 'Light short-sleeve tech tee');
-      expect(after.name, 'Singlet or your lightest tee');
+      expect(before.name, 'Short-sleeve tee');
+      expect(after.name, 'Light short-sleeve tech tee');
       expect(after.reason,
-          startsWith('You run warm above 15°C, so this is lighter than usual.'));
+          startsWith('You run warm between 16 and 20°C, so this is lighter '
+              'than usual.'));
     });
 
     test('unchanged items get no personal note', () {
@@ -176,7 +205,7 @@ void main() {
       }
     });
 
-    test('learning above 15°C leaves cool-day kit alone', () {
+    test('learning at 16-20°C leaves cold-day kit alone', () {
       final coolRun = forecast(apparentC: 8);
       expect(
           buildKit(Sport.run, coolRun,
@@ -195,7 +224,7 @@ void main() {
               })),
           BodyPart.hands);
       expect(standard.first.name, 'Fingerless mitts');
-      expect(personal.first.name, 'Full-finger gloves');
+      expect(personal.first.name, 'Light full-finger gloves');
       expect(personal.first.reason,
           startsWith('Your comfort profile says your hands run cold, so this '
               'is warmer than usual.'));
@@ -227,12 +256,13 @@ void main() {
     test('first report: one more needed', () {
       expect(after(const [], fb(Feeling.tooWarm)),
           'Noted. One more report like this and we\'ll suggest a lighter top '
-          'when it\'s above 15°C.');
+          'when it\'s between 16 and 20°C.');
     });
 
     test('second report: learned', () {
       expect(after([fb(Feeling.tooWarm)], fb(Feeling.tooWarm)),
-          'Learned: you run warm above 15°C. Next time we\'ll suggest a '
+          'Learned: you run warm between 16 and 20°C. Next time we\'ll '
+          'suggest a '
           'lighter top.');
     });
 
@@ -240,7 +270,8 @@ void main() {
       expect(
           after([fb(Feeling.tooCold, part: BodyPart.hands, feelsC: 2)],
               fb(Feeling.tooCold, part: BodyPart.hands, feelsC: 3)),
-          'Learned: your hands run cold below 5°C. Next time we\'ll suggest '
+          'Learned: your hands run cold between 0 and 4°C. Next time we\'ll '
+          'suggest '
           'warmer gloves.');
     });
 
@@ -340,13 +371,13 @@ void main() {
       await store.addFeedback(fb(Feeling.tooWarm));
       await store.setComfortManual(Sport.bike, BodyPart.hands, -1);
       var p = store.comfortProfile;
-      expect(p.learned(Sport.run, BodyPart.torso, TempZone.warm).steps, 1);
+      expect(p.learned(Sport.run, BodyPart.torso, TempZone.mildWarm).steps, 1);
       expect(p.manual(Sport.bike, BodyPart.hands), -1);
 
       await store.forgetLearned(
-          Sport.run, BodyPart.torso, TempZone.warm, DateTime(2030));
+          Sport.run, BodyPart.torso, TempZone.mildWarm, DateTime(2030));
       p = store.comfortProfile;
-      expect(p.learned(Sport.run, BodyPart.torso, TempZone.warm).net, 0);
+      expect(p.learned(Sport.run, BodyPart.torso, TempZone.mildWarm).net, 0);
 
       await store.deleteFeedback(store.feedback.first.id);
       expect(store.feedback, hasLength(1));

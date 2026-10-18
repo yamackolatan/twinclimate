@@ -3,16 +3,30 @@ import '../models/gear.dart';
 import '../models/session.dart';
 import '../models/weather.dart';
 
-/// Temperature bands the gear rules are written against, based on the
-/// session's mean "feels like" temperature.
-enum TempBand { freezing, cold, cool, mild, warm, hot }
+/// Felt-temperature ranges the kit rules are written against, coldest
+/// first. Narrow (about 3 °C) where athletes' clothing choices change
+/// often — between roughly 7 and 20 °C cycling guides change kit every
+/// 2–3 °C — and in the cold, where every degree counts (owner request,
+/// Oct 2026).
+enum TempBand {
+  severe, // below −5
+  freezing, // −5 to 0
+  veryCold, // 0 to 4
+  cold, // 4 to 7
+  chilly, // 7 to 10
+  cool, // 10 to 13
+  mild, // 13 to 16
+  mildWarm, // 16 to 20
+  warm, // 20 to 24
+  hot, // 24 and above
+}
 
-TempBand bandFor(double apparentC) {
-  if (apparentC < 0) return TempBand.freezing;
-  if (apparentC < 6) return TempBand.cold;
-  if (apparentC < 12) return TempBand.cool;
-  if (apparentC < 18) return TempBand.mild;
-  if (apparentC < 24) return TempBand.warm;
+const List<double> _bandUpperC = [-5, 0, 4, 7, 10, 13, 16, 20, 24];
+
+TempBand bandFor(double feltC) {
+  for (var i = 0; i < _bandUpperC.length; i++) {
+    if (feltC < _bandUpperC[i]) return TempBand.values[i];
+  }
   return TempBand.hot;
 }
 
@@ -21,8 +35,7 @@ TempBand bandFor(double apparentC) {
 /// those parts are treated a few degrees warmer than the air says.
 /// Cyclists make their own headwind, so torso, hands, head and feet are
 /// treated colder. Returned value is added to the felt temperature before
-/// picking a band. The F4 comfort profile will later add a learned,
-/// per-user shift on top of this.
+/// picking a range.
 double sportPartAdjustment(Sport sport, BodyPart part) {
   switch (sport) {
     case Sport.run:
@@ -45,9 +58,9 @@ double sportPartAdjustment(Sport sport, BodyPart part) {
 
 /// Builds the kit list for a session. Pure logic: same inputs, same list.
 ///
-/// With a [comfort] profile (F4), each body part's felt temperature gets
-/// the user's personal shift. Items that end up different from the
-/// standard suggestion say why ("You run warm above 15°C, …").
+/// With a [comfort] profile (F4), each body part moves up to two kit
+/// ranges lighter or warmer. Items that end up different from the
+/// standard suggestion say why ("You run warm between 13 and 16°C, …").
 List<GearItem> buildKit(
   Sport sport,
   SessionForecast forecast, {
@@ -57,14 +70,14 @@ List<GearItem> buildKit(
   final standard = _build(sport, forecast, distanceKm, const {});
   if (comfort == null) return standard;
   final zone = TempZone.of(forecast.meanApparentC);
-  final shifts = {
-    for (final part in BodyPart.values) part: comfort.shiftC(sport, part, zone),
+  final steps = {
+    for (final part in BodyPart.values) part: comfort.steps(sport, part, zone),
   };
-  if (shifts.values.every((s) => s == 0)) return standard;
-  final personal = _build(sport, forecast, distanceKm, shifts);
+  if (steps.values.every((s) => s == 0)) return standard;
+  final personal = _build(sport, forecast, distanceKm, steps);
   return [
     for (final item in personal)
-      if (shifts[item.part] != 0 &&
+      if (steps[item.part] != 0 &&
           !standard.any((s) => s.part == item.part && s.name == item.name))
         GearItem(
           part: item.part,
@@ -84,9 +97,9 @@ List<GearItem> _build(
   Sport sport,
   SessionForecast forecast,
   double distanceKm,
-  Map<BodyPart, double> shifts,
+  Map<BodyPart, int> steps,
 ) {
-  final builder = _KitBuilder(sport, forecast, distanceKm, shifts);
+  final builder = _KitBuilder(sport, forecast, distanceKm, steps);
   switch (sport) {
     case Sport.run:
       builder.buildRun();
@@ -110,8 +123,8 @@ List<GearItem> buildKitForPlan(
   comfort: comfort,
 );
 
-/// "You run warm above 15°C, so this is lighter than usual." The learned
-/// part wins; otherwise the Settings slider is quoted.
+/// "You run warm between 13 and 16°C, so this is lighter than usual." The
+/// learned part wins; otherwise the Settings slider is quoted.
 String comfortNote(
   ComfortProfile comfort,
   Sport sport,
@@ -148,7 +161,7 @@ String _partNoun(BodyPart part) => switch (part) {
 const _fixedItems = {'Helmet', 'Bright silicone swim cap', 'Towel'};
 
 /// The main clothing suggestion per body part (first essential,
-/// weather-independent-of-rain item), for the "Did you wear that?" check.
+/// non-rain/wind item), for the "Did you wear that?" check.
 Map<BodyPart, String> mainSuggestions(List<GearItem> kit) {
   final result = <BodyPart, String>{};
   for (final item in kit) {
@@ -164,27 +177,47 @@ Map<BodyPart, String> mainSuggestions(List<GearItem> kit) {
 }
 
 class _KitBuilder {
-  _KitBuilder(this.sport, this.f, this.distanceKm, this.shifts);
+  _KitBuilder(this.sport, this.f, this.distanceKm, this.steps);
 
   final Sport sport;
   final SessionForecast f;
   final double distanceKm;
 
-  /// Personal comfort shift per body part (°C), from the F4 profile.
-  final Map<BodyPart, double> shifts;
+  /// Personal comfort steps per body part (F4): +1 = one range lighter.
+  final Map<BodyPart, int> steps;
   final List<GearItem> items = [];
 
   /// Long enough that blister prevention deserves a mention.
   bool get distanceIsLong => sport == Sport.run && distanceKm >= 15;
 
-  /// Felt temperature for a body part, including the sport baseline.
-  double feltC(BodyPart part) =>
-      f.meanApparentC + sportPartAdjustment(sport, part) + (shifts[part] ?? 0);
+  /// Kit range for a body part: felt temperature (with sun and wet), the
+  /// sport baseline, then the personal comfort steps.
+  TempBand band(BodyPart part) {
+    final base = bandFor(f.kitFeelsC + sportPartAdjustment(sport, part));
+    final index = (base.index + (steps[part] ?? 0)).clamp(
+      0,
+      TempBand.values.length - 1,
+    );
+    return TempBand.values[index];
+  }
 
-  TempBand band(BodyPart part) => bandFor(feltC(part));
+  bool atMost(BodyPart part, TempBand b) => band(part).index <= b.index;
 
   /// The number quoted in reasons: the real session feels-like, rounded.
   int get feels => f.meanApparentC.round();
+
+  /// "Session feels like 12°" plus, when sun or rain changed the picture,
+  /// ", more like 15° in the sun".
+  String get feelsLike {
+    final adjusted = f.kitFeelsC.round();
+    if (adjusted == feels) return 'Session feels like $feels°';
+    final why = f.sunBonusC > 0 && f.wetPenaltyC > 0
+        ? 'with the sun and rain'
+        : f.sunBonusC > 0
+        ? 'in the sun'
+        : 'when wet';
+    return 'Session feels like $feels°, more like $adjusted° $why';
+  }
 
   int get rainChance => f.maxPrecipProbabilityPercent.round();
 
@@ -220,17 +253,31 @@ class _KitBuilder {
 
   void _runHead() {
     switch (band(BodyPart.head)) {
+      case TempBand.severe:
+        add(
+          BodyPart.head,
+          'Warm beanie + neck gaiter',
+          '$feelsLike — cover ears and neck; pull the gaiter over your face into the wind.',
+        );
       case TempBand.freezing:
         add(
           BodyPart.head,
           'Warm beanie',
-          'Session feels like $feels° — you lose a lot of heat bare-headed.',
+          '$feelsLike — you lose a lot of heat bare-headed.',
         );
+      case TempBand.veryCold:
       case TempBand.cold:
         add(
           BodyPart.head,
           'Thin beanie or headband',
-          'Session feels like $feels° — keeps ears warm without overheating.',
+          '$feelsLike — keeps ears warm without overheating.',
+        );
+      case TempBand.chilly:
+        add(
+          BodyPart.head,
+          'Ear-covering headband',
+          '$feelsLike — ears feel it first; easy to pocket once warm.',
+          optional: true,
         );
       default:
         break;
@@ -262,43 +309,67 @@ class _KitBuilder {
         add(
           BodyPart.torso,
           'Singlet or your lightest tee',
-          'Session feels like $feels° — heat builds fast on the run.$humidNote',
+          '$feelsLike — heat builds fast on the run.$humidNote',
         );
       case TempBand.warm:
         add(
           BodyPart.torso,
           'Light short-sleeve tech tee',
-          'Session feels like $feels° and runners warm up quickly.$humidNote',
+          '$feelsLike and runners warm up quickly.$humidNote',
+        );
+      case TempBand.mildWarm:
+        add(
+          BodyPart.torso,
+          'Short-sleeve tee',
+          '$feelsLike — comfortable once you are moving.',
         );
       case TempBand.mild:
         add(
           BodyPart.torso,
           'Short-sleeve tee',
-          'Session feels like $feels° — comfortable once you are moving.',
+          '$feelsLike — fine on the move, a touch cool at the start.',
         );
         add(
           BodyPart.torso,
           'Light long sleeve to start',
-          'A touch cool for the first 10 minutes; tie it round your waist after.',
+          'Cool for the first 10 minutes; tie it round your waist after.',
           optional: true,
         );
       case TempBand.cool:
         add(
           BodyPart.torso,
+          'Light long-sleeve top',
+          '$feelsLike — sleeves for the start, thin enough not to overheat.',
+        );
+      case TempBand.chilly:
+        add(
+          BodyPart.torso,
           'Long-sleeve base layer',
-          'Session feels like $feels° — long sleeves, but nothing heavy: you generate heat on the move.',
+          '$feelsLike — long sleeves, nothing heavy: you generate heat on the move.',
         );
       case TempBand.cold:
         add(
           BodyPart.torso,
+          'Long-sleeve base layer + light vest or jacket',
+          '$feelsLike — a wind-blocking layer over the base keeps the core warm.',
+        );
+      case TempBand.veryCold:
+        add(
+          BodyPart.torso,
           'Base layer + light running jacket',
-          'Session feels like $feels° — two thin layers beat one thick one.',
+          '$feelsLike — two thin layers beat one thick one.',
         );
       case TempBand.freezing:
         add(
           BodyPart.torso,
           'Thermal base layer + running jacket',
-          'Session feels like $feels° — protect your core, vent with the zip.',
+          '$feelsLike — protect your core, vent with the zip.',
+        );
+      case TempBand.severe:
+        add(
+          BodyPart.torso,
+          'Thermal base + mid layer + windproof jacket',
+          '$feelsLike — three layers; open the zip if you start sweating.',
         );
     }
     if (f.rainLikely) {
@@ -322,19 +393,31 @@ class _KitBuilder {
 
   void _runHands() {
     switch (band(BodyPart.hands)) {
+      case TempBand.severe:
+        add(
+          BodyPart.hands,
+          'Insulated mittens',
+          '$feelsLike — mittens keep fingers together and warm.',
+        );
       case TempBand.freezing:
         add(
           BodyPart.hands,
           'Warm running gloves',
-          'Session feels like $feels° — fingers lose heat fastest.',
+          '$feelsLike — fingers lose heat fastest.',
+        );
+      case TempBand.veryCold:
+        add(
+          BodyPart.hands,
+          'Running gloves',
+          '$feelsLike — your hands won\'t warm up on their own.',
         );
       case TempBand.cold:
         add(
           BodyPart.hands,
           'Thin gloves',
-          'Session feels like $feels° — easy to stash once your hands warm up.',
+          '$feelsLike — easy to stash once your hands warm up.',
         );
-      case TempBand.cool:
+      case TempBand.chilly:
         add(
           BodyPart.hands,
           'Thin gloves',
@@ -348,30 +431,44 @@ class _KitBuilder {
 
   void _runLegs() {
     switch (band(BodyPart.legs)) {
+      case TempBand.severe:
+        add(
+          BodyPart.legs,
+          'Wind-blocking thermal tights',
+          '$feelsLike — full insulation with a windproof front.',
+        );
       case TempBand.freezing:
         add(
           BodyPart.legs,
           'Thermal running tights',
-          'Session feels like $feels° — full insulation today.',
+          '$feelsLike — full insulation today.',
+        );
+      case TempBand.veryCold:
+        add(
+          BodyPart.legs,
+          'Running tights',
+          '$feelsLike — too cold for bare legs, even on the run.',
         );
       case TempBand.cold:
         add(
           BodyPart.legs,
-          'Running tights',
-          'Session feels like $feels° — too cold for bare legs, even on the run.',
+          'Tights or 3/4 tights',
+          '$feelsLike — bare knees get stiff at this temperature.',
+        );
+      case TempBand.chilly:
+        add(
+          BodyPart.legs,
+          'Shorts or 3/4 tights',
+          '$feelsLike — runners\' legs run warm; tights if you run easy.',
         );
       case TempBand.cool:
         add(
           BodyPart.legs,
           'Shorts',
-          'Session feels like $feels°, but runners\' legs run warm — most prefer shorts here.',
+          '$feelsLike, but runners\' legs run warm — most prefer shorts here.',
         );
       default:
-        add(
-          BodyPart.legs,
-          'Shorts',
-          'Session feels like $feels° — an easy shorts day.',
-        );
+        add(BodyPart.legs, 'Shorts', '$feelsLike — an easy shorts day.');
     }
   }
 
@@ -397,6 +494,12 @@ class _KitBuilder {
         'Wet cotton socks cause blisters — synthetic dries on the move.',
         trigger: GearTrigger.rain,
       );
+    } else if (atMost(BodyPart.feet, TempBand.freezing)) {
+      add(
+        BodyPart.feet,
+        'Warm wool-blend socks',
+        '$feelsLike — toes get cold before anything else.',
+      );
     } else if (distanceIsLong) {
       add(
         BodyPart.feet,
@@ -420,13 +523,30 @@ class _KitBuilder {
 
   void _bikeHead() {
     add(BodyPart.head, 'Helmet', 'Every ride, no exceptions.');
-    final b = band(BodyPart.head);
-    if (b == TempBand.freezing || b == TempBand.cold) {
-      add(
-        BodyPart.head,
-        'Thermal skull cap under the helmet',
-        'Session feels like $feels° plus riding windchill on your ears.',
-      );
+    switch (band(BodyPart.head)) {
+      case TempBand.severe:
+      case TempBand.freezing:
+        add(
+          BodyPart.head,
+          'Thermal skull cap + neck warmer',
+          '$feelsLike plus riding windchill on ears and neck.',
+        );
+      case TempBand.veryCold:
+      case TempBand.cold:
+        add(
+          BodyPart.head,
+          'Thermal skull cap under the helmet',
+          '$feelsLike plus riding windchill on your ears.',
+        );
+      case TempBand.chilly:
+        add(
+          BodyPart.head,
+          'Ear band or cycling cap',
+          '$feelsLike — keeps the wind off your ears on descents.',
+          optional: true,
+        );
+      default:
+        break;
     }
     if (f.rainLikely) {
       add(
@@ -452,42 +572,64 @@ class _KitBuilder {
   }
 
   void _bikeTorso() {
+    // Cycling guides are written for riding (windchill included), so with
+    // the cyclist torso baseline of −3 °C these ranges line up with them:
+    // e.g. arm warmers at 16–19 °C air, a gilet at 13–16 °C air.
     switch (band(BodyPart.torso)) {
       case TempBand.hot:
         add(
           BodyPart.torso,
           'Lightweight summer jersey',
-          'Session feels like $feels° — go as breathable as you own.',
+          '$feelsLike — go as breathable as you own.',
         );
       case TempBand.warm:
+      case TempBand.mildWarm:
         add(
           BodyPart.torso,
           'Short-sleeve jersey',
-          'Session feels like $feels° — standard short-sleeve weather.',
+          '$feelsLike — standard short-sleeve weather.',
         );
       case TempBand.mild:
         add(
           BodyPart.torso,
-          'Jersey + arm warmers',
-          'Session feels like $feels° but riding at 25 km/h makes its own windchill.',
+          'Short-sleeve jersey + arm warmers',
+          '$feelsLike — arm warmers for the start and descents; roll them down once warm.',
         );
       case TempBand.cool:
         add(
           BodyPart.torso,
-          'Long-sleeve jersey',
-          'Session feels like $feels° — cool air plus riding windchill.',
+          'Jersey + arm warmers + wind gilet',
+          '$feelsLike but riding makes its own windchill — the gilet blocks it on descents.',
+        );
+      case TempBand.chilly:
+        add(
+          BodyPart.torso,
+          'Long-sleeve thermal jersey + wind gilet',
+          '$feelsLike — sleeves all ride, a gilet for the chest.',
         );
       case TempBand.cold:
         add(
           BodyPart.torso,
-          'Long-sleeve jersey + thermal gilet',
-          'Session feels like $feels° — keep the core warm, arms free.',
+          'Base layer + long-sleeve thermal jersey + wind jacket',
+          '$feelsLike — thermal fabric plus a wind-blocking layer.',
+        );
+      case TempBand.veryCold:
+        add(
+          BodyPart.torso,
+          'Base layer + thermal jersey + windproof softshell',
+          '$feelsLike — block the wind; the cold gets in through the front.',
         );
       case TempBand.freezing:
         add(
           BodyPart.torso,
-          'Winter cycling jacket',
-          'Session feels like $feels° — full winter kit on the bike.',
+          'Thermal base layer + winter cycling jacket',
+          '$feelsLike — full winter kit on the bike.',
+        );
+      case TempBand.severe:
+        add(
+          BodyPart.torso,
+          'Thermal layers + insulated winter jacket',
+          '$feelsLike — the warmest you own; windchill is brutal at speed.',
         );
     }
     if (f.rainLikely) {
@@ -497,7 +639,7 @@ class _KitBuilder {
         '$rainChance% rain chance — getting soaked on a bike gets cold fast.',
         trigger: GearTrigger.rain,
       );
-    } else if (f.windy) {
+    } else if (f.windy && band(BodyPart.torso).index > TempBand.cool.index) {
       add(
         BodyPart.torso,
         'Wind gilet',
@@ -509,25 +651,44 @@ class _KitBuilder {
 
   void _bikeHands() {
     switch (band(BodyPart.hands)) {
+      case TempBand.severe:
+        add(
+          BodyPart.hands,
+          'Lobster mitts + liner gloves',
+          '$feelsLike — braking fingers go numb first.',
+        );
       case TempBand.freezing:
         add(
           BodyPart.hands,
           'Winter gloves or lobster mitts',
-          'Session feels like $feels° — braking fingers go numb first.',
+          '$feelsLike — braking fingers go numb first.',
+        );
+      case TempBand.veryCold:
+        add(
+          BodyPart.hands,
+          'Winter cycling gloves',
+          '$feelsLike plus windchill on the bars.',
         );
       case TempBand.cold:
         add(
           BodyPart.hands,
           'Insulated full-finger gloves',
-          'Session feels like $feels° plus windchill on the bars.',
+          '$feelsLike plus windchill on the bars.',
+        );
+      case TempBand.chilly:
+        add(
+          BodyPart.hands,
+          'Full-finger gloves',
+          '$feelsLike — windchill bites on descents.',
         );
       case TempBand.cool:
         add(
           BodyPart.hands,
-          'Full-finger gloves',
-          'Session feels like $feels° — windchill bites on descents.',
+          'Light full-finger gloves',
+          '$feelsLike — thin gloves take the edge off the wind.',
         );
       case TempBand.mild:
+      case TempBand.mildWarm:
         add(
           BodyPart.hands,
           'Fingerless mitts',
@@ -545,36 +706,40 @@ class _KitBuilder {
 
   void _bikeLegs() {
     switch (band(BodyPart.legs)) {
+      case TempBand.severe:
       case TempBand.freezing:
         add(
           BodyPart.legs,
-          'Winter bib tights',
-          'Session feels like $feels° — knees need full cover.',
+          'Windproof winter bib tights',
+          '$feelsLike — knees need full, wind-blocking cover.',
         );
+      case TempBand.veryCold:
       case TempBand.cold:
         add(
           BodyPart.legs,
           'Thermal bib tights',
-          'Session feels like $feels° — cold knees are slow knees.',
+          '$feelsLike — cold knees are slow knees.',
+        );
+      case TempBand.chilly:
+        add(
+          BodyPart.legs,
+          'Bib shorts + thermal leg warmers (or 3/4 tights)',
+          '$feelsLike — cover the knees; warmers come off if it warms up.',
         );
       case TempBand.cool:
         add(
           BodyPart.legs,
           'Bib shorts + leg warmers',
-          'Session feels like $feels° — warmers come off if it warms up.',
+          '$feelsLike — leg warmers rather than knee warmers at this temperature.',
         );
       case TempBand.mild:
         add(
           BodyPart.legs,
           'Bib shorts + knee warmers',
-          'Session feels like $feels° — protect the knees in cool moving air.',
+          '$feelsLike — protect the knees in cool moving air.',
         );
       default:
-        add(
-          BodyPart.legs,
-          'Bib shorts',
-          'Session feels like $feels° — standard bibs weather.',
-        );
+        add(BodyPart.legs, 'Bib shorts', '$feelsLike — standard bibs weather.');
     }
   }
 
@@ -587,29 +752,42 @@ class _KitBuilder {
         '$rainChance% rain chance — road spray soaks shoes from below.',
         trigger: GearTrigger.rain,
       );
-    } else {
-      switch (band(BodyPart.feet)) {
-        case TempBand.freezing:
-          add(
-            BodyPart.feet,
-            'Insulated overshoes',
-            'Session feels like $feels° — toes get no blood flow on the bike.',
-          );
-        case TempBand.cold:
-          add(
-            BodyPart.feet,
-            'Toe covers',
-            'Session feels like $feels° plus windchill — toes go numb first.',
-          );
-        case TempBand.cool:
-          add(
-            BodyPart.feet,
-            'Mid-weight socks',
-            'Session feels like $feels° — a little insulation goes a long way.',
-          );
-        default:
-          break;
-      }
+      return;
+    }
+    switch (band(BodyPart.feet)) {
+      case TempBand.severe:
+      case TempBand.freezing:
+        add(
+          BodyPart.feet,
+          'Insulated overshoes + winter socks',
+          '$feelsLike — toes get almost no blood flow on the bike.',
+        );
+      case TempBand.veryCold:
+        add(
+          BodyPart.feet,
+          'Insulated overshoes',
+          '$feelsLike — toes go numb first on the bike.',
+        );
+      case TempBand.cold:
+        add(
+          BodyPart.feet,
+          'Overshoes',
+          '$feelsLike plus windchill — keep the wind out of your shoes.',
+        );
+      case TempBand.chilly:
+        add(
+          BodyPart.feet,
+          'Toe covers',
+          '$feelsLike — wind through shoe vents chills toes.',
+        );
+      case TempBand.cool:
+        add(
+          BodyPart.feet,
+          'Mid-weight or wool socks',
+          '$feelsLike — a little insulation goes a long way.',
+        );
+      default:
+        break;
     }
   }
 
@@ -617,15 +795,16 @@ class _KitBuilder {
 
   void buildSwim() {
     final airBand = band(BodyPart.torso);
-    final coolOrColder = airBand.index <= TempBand.cool.index;
+    bool airAtMost(TempBand b) => airBand.index <= b.index;
+    final wetsuitNeeded = airAtMost(TempBand.cool);
 
     // Head
     add(BodyPart.head, 'Bright silicone swim cap', 'Be visible in open water.');
-    if (coolOrColder) {
+    if (airAtMost(TempBand.cool)) {
       add(
         BodyPart.head,
         'Neoprene cap',
-        'Air feels like $feels° over the session — expect cold water on the head.',
+        'Air $feelsLike over the session — expect cold water on the head.',
         optional: airBand == TempBand.cool,
       );
     }
@@ -640,14 +819,14 @@ class _KitBuilder {
     }
 
     // Torso
-    if (coolOrColder) {
+    if (wetsuitNeeded) {
       add(
         BodyPart.torso,
         'Wetsuit',
-        'Air feels like $feels° over the session — open water will feel colder still. '
+        'Air $feelsLike over the session — open water will feel colder still. '
             '(Water temperature data comes in a later version.)',
       );
-    } else if (airBand == TempBand.mild) {
+    } else if (airAtMost(TempBand.mildWarm)) {
       add(
         BodyPart.torso,
         'Wetsuit',
@@ -663,10 +842,10 @@ class _KitBuilder {
       add(
         BodyPart.torso,
         'Swimsuit / trisuit',
-        'Session feels like $feels° — warm enough to skip neoprene for most.',
+        '$feelsLike — warm enough to skip neoprene for most.',
       );
     }
-    if (coolOrColder || f.windy) {
+    if (wetsuitNeeded || f.windy) {
       add(
         BodyPart.torso,
         'Dry robe or warm layer for after',
@@ -679,16 +858,16 @@ class _KitBuilder {
     add(BodyPart.torso, 'Towel', 'Always in the swim bag.');
 
     // Hands
-    if (airBand == TempBand.freezing || airBand == TempBand.cold) {
+    if (airAtMost(TempBand.cold)) {
       add(
         BodyPart.hands,
         'Neoprene gloves',
-        'Air feels like $feels° over the session — fingers go numb quickly in cold water.',
+        'Air $feelsLike over the session — fingers go numb quickly in cold water.',
       );
     }
 
     // Legs
-    if (!coolOrColder) {
+    if (!wetsuitNeeded) {
       add(
         BodyPart.legs,
         'Jammers / suit bottoms',
@@ -697,7 +876,7 @@ class _KitBuilder {
     }
 
     // Feet
-    if (coolOrColder) {
+    if (airAtMost(TempBand.chilly)) {
       add(
         BodyPart.feet,
         'Neoprene booties',

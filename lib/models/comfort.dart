@@ -3,22 +3,31 @@ import 'dart:convert';
 import 'gear.dart';
 import 'session.dart';
 
-/// Felt-temperature zones the profile learns in (owner decision 3).
+/// Felt-temperature ranges the profile learns in. They follow the kit
+/// ranges (owner request, Oct 2026: finer ranges — kit changes every few
+/// degrees between about 7 and 20 °C, and below 10 °C each degree counts),
+/// with the two coldest and two warmest kit ranges merged.
 enum TempZone {
-  cold('below 5°C'),
-  mild('between 5 and 15°C'),
-  warm('above 15°C');
+  freezing('below 0°C', 0),
+  veryCold('between 0 and 4°C', 4),
+  cold('between 4 and 7°C', 7),
+  chilly('between 7 and 10°C', 10),
+  cool('between 10 and 13°C', 13),
+  mild('between 13 and 16°C', 16),
+  mildWarm('between 16 and 20°C', 20),
+  warm('above 20°C', double.infinity);
 
-  const TempZone(this.phrase);
+  const TempZone(this.phrase, this.upperC);
 
-  /// "above 15°C", used in reasons and messages.
+  /// "between 13 and 16°C", used in reasons and messages.
   final String phrase;
 
-  static TempZone of(double feelsC) {
-    if (feelsC < 5) return TempZone.cold;
-    if (feelsC < 15) return TempZone.mild;
-    return TempZone.warm;
-  }
+  /// The zone covers felt temperatures below this (and from the previous
+  /// zone's upper bound).
+  final double upperC;
+
+  static TempZone of(double feelsC) =>
+      TempZone.values.firstWhere((z) => feelsC < z.upperC);
 }
 
 enum Feeling { tooCold, justRight, tooWarm }
@@ -229,20 +238,23 @@ class FeedbackEntry {
 class LearnedComfort {
   const LearnedComfort(this.net, this.reports);
 
-  /// Positive = runs warm (too-warm reports outweigh), negative = cold.
+  /// In points: a report counts 2 points in its own range and 1 point in
+  /// each neighbouring range. Positive = runs warm, negative = runs cold.
   final int net;
 
-  /// Reports that counted towards it.
+  /// Reports given in this range itself.
   final int reports;
 
-  /// Owner decision 2: two matching reports = one step, at most two.
-  int get steps => net.sign * (net.abs() ~/ 2).clamp(0, maxComfortSteps);
+  /// Owner decision 2: two matching reports (4 points) = one step, at most
+  /// two. One step = one kit range lighter (or warmer).
+  int get steps =>
+      net.sign * (net.abs() ~/ pointsPerStep).clamp(0, maxComfortSteps);
 }
 
 const int maxComfortSteps = 2;
 
-/// Felt-temperature shift per comfort step: one gear band is 6 °C wide.
-const double degreesPerStep = 6;
+/// Two reports in the same range make one step.
+const int pointsPerStep = 4;
 
 /// Everything the app knows about how warm or cold a user runs.
 class ComfortProfile {
@@ -279,11 +291,6 @@ class ComfortProfile {
         maxComfortSteps,
       );
 
-  /// Added to the felt temperature for [part] before picking kit: warm
-  /// runners get kit chosen as if it were warmer, i.e. lighter.
-  double shiftC(Sport sport, BodyPart part, TempZone zone) =>
-      steps(sport, part, zone) * degreesPerStep;
-
   /// Answers for [sport] in [zone], newest first.
   List<FeedbackEntry> recent(Sport sport, TempZone zone) => [
     for (final e in feedback.reversed)
@@ -306,21 +313,29 @@ class ComfortProfile {
     final reports = <String, int>{};
     for (final e in feedback) {
       if (e.explainedByClothing) continue;
+      final own = e.zone.index;
       for (final part in e.part == null ? BodyPart.values : [e.part!]) {
-        final k = key(e.sport, part, e.zone);
-        final forgetAt = forgotten[k];
-        if (forgetAt != null && !e.date.isAfter(forgetAt)) continue;
-        final current = net[k] ?? 0;
-        switch (e.feeling) {
-          case Feeling.tooWarm:
-            net[k] = current + 1;
+        // Own range counts fully, neighbouring ranges half, so the finer
+        // ranges still learn quickly without mixing summer and winter.
+        for (final (index, points) in [(own, 2), (own - 1, 1), (own + 1, 1)]) {
+          if (index < 0 || index >= TempZone.values.length) continue;
+          final k = key(e.sport, part, TempZone.values[index]);
+          final forgetAt = forgotten[k];
+          if (forgetAt != null && !e.date.isAfter(forgetAt)) continue;
+          final current = net[k] ?? 0;
+          switch (e.feeling) {
+            case Feeling.tooWarm:
+              net[k] = current + points;
+            case Feeling.tooCold:
+              net[k] = current - points;
+            case Feeling.justRight:
+              // Cancels part of earlier reports, so one odd day doesn't
+              // stick — never overshooting past zero.
+              net[k] = current.sign * (current.abs() - points).clamp(0, 99);
+          }
+          if (index == own && e.feeling != Feeling.justRight) {
             reports[k] = (reports[k] ?? 0) + 1;
-          case Feeling.tooCold:
-            net[k] = current - 1;
-            reports[k] = (reports[k] ?? 0) + 1;
-          case Feeling.justRight:
-            // Cancels one earlier report, so one odd day doesn't stick.
-            if (current != 0) net[k] = current - current.sign;
+          }
         }
       }
     }

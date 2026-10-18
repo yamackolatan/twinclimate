@@ -112,7 +112,7 @@ void main() {
     expect(
       find.text(
         'Noted. One more report like this and we\'ll suggest a '
-        'lighter top when it\'s above 15°C.',
+        'lighter top when it\'s between 16 and 20°C.',
       ),
       findsOneWidget,
     );
@@ -154,7 +154,7 @@ void main() {
     expect(find.textContaining('Did you wear that?'), findsNothing);
     expect(
       find.text(
-        'Learned: you run warm above 15°C. Next time we\'ll suggest '
+        'Learned: you run warm between 16 and 20°C. Next time we\'ll suggest '
         'a lighter top.',
       ),
       findsOneWidget,
@@ -166,11 +166,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Comfort profile'));
     await tester.pumpAndSettle();
-    expect(find.text('Torso · runs warm above 15°C'), findsOneWidget);
+    expect(find.text('Torso · runs warm between 16 and 20°C'), findsOneWidget);
     expect(find.text('2 reports · kit is 1 step lighter'), findsOneWidget);
     await tester.tap(find.text('Forget'));
     await tester.pumpAndSettle();
-    expect(find.text('Torso · runs warm above 15°C'), findsNothing);
+    expect(find.text('Torso · runs warm between 16 and 20°C'), findsNothing);
   });
 
   testWidgets('"Just right" is a single tap', (tester) async {

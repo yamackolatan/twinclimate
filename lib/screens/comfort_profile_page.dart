@@ -79,7 +79,8 @@ class _ComfortProfilePageState extends State<ComfortProfilePage> {
     final learned = [
       for (final part in BodyPart.values)
         for (final zone in TempZone.values)
-          if (profile.learned(sport, part, zone).net != 0)
+          if (profile.learned(sport, part, zone).reports > 0 ||
+              profile.learned(sport, part, zone).steps != 0)
             (part, zone, profile.learned(sport, part, zone)),
     ];
     final recent = [

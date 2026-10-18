@@ -11,6 +11,7 @@ class HourWeather {
     required this.gustKmh,
     required this.weatherCode,
     required this.isDay,
+    this.radiationWm2 = 0,
   });
 
   final DateTime time;
@@ -29,6 +30,10 @@ class HourWeather {
   final int weatherCode;
 
   final bool isDay;
+
+  /// Sunshine strength (global horizontal radiation), W/m². The service's
+  /// "feels like" leaves the sun out, so the kit rules add it themselves.
+  final double radiationWm2;
 }
 
 /// Forecast for one coordinate of a multi-spot request, with the ground
@@ -111,6 +116,32 @@ class SessionForecast {
   bool get veryWindy => maxWindKmh >= 40 || maxGustKmh >= 60;
 
   bool get humid => meanHumidityPercent >= 75;
+
+  double get meanRadiationWm2 =>
+      _mean([for (final h in hours) h.radiationWm2]);
+
+  /// Degrees added for sunshine while exercising. The forecast's "feels
+  /// like" ignores the sun (checked against the formula), yet studies show
+  /// sun raises how warm exercise feels. Conservative estimate: +3 °C in
+  /// strong sun (≥ 500 W/m², roughly clear midday), +1.5 °C in moderate
+  /// sun (≥ 250 W/m²).
+  double get sunBonusC {
+    final r = meanRadiationWm2;
+    if (r >= 500) return 3;
+    if (r >= 250) return 1.5;
+    return 0;
+  }
+
+  /// Getting wet is treated as 3 °C colder (about one kit range): wet
+  /// clothing loses heat much faster, and cycling guides say to go one
+  /// level warmer in the wet.
+  double get wetPenaltyC =>
+      (totalPrecipitationMm >= 0.5 || maxPrecipProbabilityPercent >= 60)
+          ? 3
+          : 0;
+
+  /// Felt temperature used to choose kit: "feels like" plus sun, minus wet.
+  double get kitFeelsC => meanApparentC + sunBonusC - wetPenaltyC;
 
   static double _mean(List<double> values) =>
       values.reduce((a, b) => a + b) / values.length;

@@ -14,6 +14,7 @@ SessionForecast forecast({
   double humidity = 55,
   int weatherCode = 1,
   bool isDay = true,
+  double radiation = 0,
 }) {
   HourWeather hour(int h) => HourWeather(
         time: DateTime(2026, 6, 13, h),
@@ -26,6 +27,7 @@ SessionForecast forecast({
         gustKmh: gustKmh,
         weatherCode: weatherCode,
         isDay: isDay,
+        radiationWm2: radiation,
       );
   return SessionForecast([hour(8), hour(9)]);
 }
@@ -215,13 +217,66 @@ void main() {
   });
 
   group('temperature bands and sport baselines', () {
-    test('bands split where the spec says', () {
+    test('ranges split where the research and owner say', () {
+      expect(bandFor(-5.1), TempBand.severe);
       expect(bandFor(-1), TempBand.freezing);
-      expect(bandFor(0), TempBand.cold);
-      expect(bandFor(6), TempBand.cool);
-      expect(bandFor(12), TempBand.mild);
-      expect(bandFor(18), TempBand.warm);
+      expect(bandFor(0), TempBand.veryCold);
+      expect(bandFor(4), TempBand.cold);
+      expect(bandFor(7), TempBand.chilly);
+      expect(bandFor(10), TempBand.cool);
+      expect(bandFor(12.9), TempBand.cool);
+      expect(bandFor(13), TempBand.mild);
+      expect(bandFor(16), TempBand.mildWarm);
+      expect(bandFor(20), TempBand.warm);
       expect(bandFor(24), TempBand.hot);
+    });
+
+    test('owner\'s example: top stays the same 10-12°, changes at 13-15°', () {
+      for (final sport in [Sport.run, Sport.bike]) {
+        // Felt temperature on the torso includes the sport baseline.
+        final offset = sportPartAdjustment(sport, BodyPart.torso);
+        String top(double torsoFelt) => itemsFor(
+                buildKit(sport, forecast(apparentC: torsoFelt - offset)),
+                BodyPart.torso)
+            .first
+            .name;
+        expect(top(10.5), top(12.5), reason: sport.name);
+        expect(top(10.5), isNot(top(14)), reason: sport.name);
+      }
+    });
+
+    test('below 10° the kit keeps changing every few degrees', () {
+      final seen = <String>{};
+      for (final t in [10.0, 7, 4, 0, -5]) {
+        final torso = itemsFor(
+                buildKit(Sport.bike, forecast(apparentC: t + 3)),
+                BodyPart.torso)
+            .first
+            .name;
+        expect(seen.add(torso), isTrue, reason: '$t° repeats $torso');
+      }
+    });
+
+    test('strong sun counts as warmer, and the reason says so', () {
+      final shade = buildKit(Sport.bike, forecast(apparentC: 11));
+      final sunny = buildKit(Sport.bike, forecast(apparentC: 11, radiation: 600));
+      final shadeTop = itemsFor(shade, BodyPart.torso).first;
+      final sunTop = itemsFor(sunny, BodyPart.torso).first;
+      expect(shadeTop.name, isNot(sunTop.name));
+      expect(sunTop.reason,
+          startsWith('Session feels like 11°, more like 14° in the sun'));
+    });
+
+    test('getting wet counts as colder', () {
+      final dry = itemsFor(
+          buildKit(Sport.bike, forecast(apparentC: 14)), BodyPart.hands);
+      final wet = itemsFor(
+          buildKit(Sport.bike,
+              forecast(apparentC: 14, precipProbability: 80, precipitationMm: 2)),
+          BodyPart.hands);
+      expect(dry.first.name, 'Light full-finger gloves');
+      expect(wet.first.name, 'Full-finger gloves');
+      expect(wet.first.reason, contains('more like 11° when wet'));
     });
 
     test('zero-data baseline matches the PRD', () {

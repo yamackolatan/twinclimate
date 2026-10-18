@@ -2,19 +2,29 @@ import 'package:flutter/material.dart';
 
 import '../logic/gear_engine.dart';
 import '../logic/weather_text.dart';
+import '../models/comfort.dart';
 import '../models/session.dart';
 import '../models/weather.dart';
+import '../services/prefs_store.dart';
 import '../services/weather_service.dart';
 import '../widgets/hour_cards.dart';
 import '../widgets/kit_checklist.dart';
 
 /// The answer screen: session-window forecast + what to wear and bring.
 class SessionResultPage extends StatefulWidget {
-  const SessionResultPage(
-      {super.key, required this.plan, required this.weather});
+  const SessionResultPage({
+    super.key,
+    required this.plan,
+    required this.weather,
+    this.store,
+  });
 
   final SessionPlan plan;
   final WeatherService weather;
+
+  /// When given, the kit uses the user's comfort profile and the session
+  /// is remembered for the post-session feedback card (F4).
+  final PrefsStore? store;
 
   @override
   State<SessionResultPage> createState() => _SessionResultPageState();
@@ -38,8 +48,12 @@ class _SessionResultPageState extends State<SessionResultPage> {
     );
     final byHour = {
       for (final hour in all)
-        DateTime(hour.time.year, hour.time.month, hour.time.day,
-            hour.time.hour): hour,
+        DateTime(
+          hour.time.year,
+          hour.time.month,
+          hour.time.day,
+          hour.time.hour,
+        ): hour,
     };
     final matched = [
       for (final wanted in windowHours)
@@ -47,10 +61,56 @@ class _SessionResultPageState extends State<SessionResultPage> {
     ];
     if (matched.isEmpty) {
       throw WeatherServiceException(
-          'No forecast is available yet for that date and time. '
-          'Forecasts reach about 16 days ahead.');
+        'No forecast is available yet for that date and time. '
+        'Forecasts reach about 16 days ahead.',
+      );
     }
-    return SessionForecast(matched);
+    final forecast = SessionForecast(matched);
+    await _remember(forecast);
+    return forecast;
+  }
+
+  String get _sessionId => SessionRecord.idFor(
+    widget.plan.sport,
+    widget.plan.place.latitude,
+    widget.plan.place.longitude,
+    widget.plan.start,
+  );
+
+  Future<void> _remember(SessionForecast forecast) async {
+    final store = widget.store;
+    if (store == null) return;
+    final plan = widget.plan;
+    final kit = buildKitForPlan(plan, forecast, comfort: store.comfortProfile);
+    await store.recordSession(
+      SessionRecord(
+        id: _sessionId,
+        sport: plan.sport,
+        placeName: plan.place.name,
+        latitude: plan.place.latitude,
+        longitude: plan.place.longitude,
+        start: plan.start,
+        end: plan.end,
+        forecastFeelsC: forecast.meanApparentC,
+        suggested: mainSuggestions(kit),
+      ),
+    );
+  }
+
+  Set<String> get _savedPacked {
+    final store = widget.store;
+    if (store == null) return const {};
+    for (final r in store.sessionRecords) {
+      if (r.id == _sessionId) return r.packed;
+    }
+    return const {};
+  }
+
+  void _onPacked(Set<String> packed, bool allPacked) {
+    widget.store?.updateSession(
+      _sessionId,
+      (r) => r.copyWith(packed: packed, allPacked: allPacked),
+    );
   }
 
   @override
@@ -105,7 +165,11 @@ class _SessionResultPageState extends State<SessionResultPage> {
 
   Widget _resultView(BuildContext context, SessionForecast forecast) {
     final plan = widget.plan;
-    final kit = buildKitForPlan(plan, forecast);
+    final kit = buildKitForPlan(
+      plan,
+      forecast,
+      comfort: widget.store?.comfortProfile,
+    );
     final scheme = Theme.of(context).colorScheme;
     final start = forecast.atStart;
 
@@ -151,9 +215,7 @@ class _SessionResultPageState extends State<SessionResultPage> {
                             children: [
                               Text(
                                 'Feels like ${start.apparentC.round()}° at the start',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
+                                style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(
                                       color: scheme.onPrimaryContainer,
                                       fontWeight: FontWeight.w700,
@@ -165,15 +227,17 @@ class _SessionResultPageState extends State<SessionResultPage> {
                                 '${start.humidityPercent.round()}% humidity · '
                                 '${windPhrase(forecast.maxWindKmh, forecast.maxGustKmh)}',
                                 style: TextStyle(
-                                    color: scheme.onPrimaryContainer),
+                                  color: scheme.onPrimaryContainer,
+                                ),
                               ),
                               if (forecast.rainLikely) ...[
                                 const SizedBox(height: 4),
                                 Text(
                                   'Rain chance up to ${forecast.maxPrecipProbabilityPercent.round()}% during your session.',
                                   style: TextStyle(
-                                      color: scheme.onPrimaryContainer,
-                                      fontWeight: FontWeight.w600),
+                                    color: scheme.onPrimaryContainer,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ],
                             ],
@@ -185,13 +249,19 @@ class _SessionResultPageState extends State<SessionResultPage> {
                 ),
                 const SizedBox(height: 16),
 
-                Text('Hour by hour',
-                    style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'Hour by hour',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 8),
                 HourCards(hours: forecast.hours),
                 const SizedBox(height: 20),
 
-                KitChecklist(items: kit),
+                KitChecklist(
+                  items: kit,
+                  initialPacked: _savedPacked,
+                  onPackedChanged: _onPacked,
+                ),
                 const SizedBox(height: 24),
 
                 Text(
@@ -199,10 +269,9 @@ class _SessionResultPageState extends State<SessionResultPage> {
                   '${plan.place.name} '
                   '(${plan.place.latitude.toStringAsFixed(3)}, '
                   '${plan.place.longitude.toStringAsFixed(3)}), local time.',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: scheme.onSurfaceVariant),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),

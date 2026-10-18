@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../logic/feedback_logic.dart';
 import '../logic/match_engine.dart';
+import '../models/comfort.dart';
 import '../models/matching.dart';
 import '../models/place.dart';
 import '../models/race.dart';
@@ -8,9 +10,11 @@ import '../models/session.dart';
 import '../services/place_namer.dart';
 import '../services/prefs_store.dart';
 import '../services/weather_service.dart';
+import '../widgets/feedback_card.dart';
 import '../widgets/place_search_sheet.dart';
 import '../widgets/races_section.dart';
 import '../widgets/weights_panel.dart';
+import 'comfort_profile_page.dart';
 import 'match_result_page.dart';
 import 'session_result_page.dart';
 
@@ -69,6 +73,35 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     _time = TimeOfDay(hour: hour, minute: minute);
     final saved = widget.store.savedPlaces;
     if (saved.isNotEmpty) _place = saved.first;
+    _refreshFeedback();
+  }
+
+  /// The finished session to ask "How did it feel?" about (F4), if any.
+  SessionRecord? _feedbackRecord;
+
+  Future<void> _refreshFeedback() async {
+    final pick = pickSessionToAsk(
+      widget.store.sessionRecords,
+      widget.store.comfortProfile,
+      DateTime.now(),
+    );
+    if (pick.skip != null) {
+      // Profile is stable here: quietly skip this one ("ask less").
+      await widget.store.updateSession(
+        pick.skip!.id,
+        (r) => r.copyWith(status: SessionStatus.skippedStable),
+      );
+    }
+    if (mounted) setState(() => _feedbackRecord = pick.ask);
+  }
+
+  Future<void> _openComfortProfile() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ComfortProfilePage(store: widget.store),
+      ),
+    );
+    if (mounted) setState(() {});
   }
 
   DateTime get _start =>
@@ -120,12 +153,16 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) =>
-            SessionResultPage(plan: plan, weather: widget.weather),
+        builder: (context) => SessionResultPage(
+          plan: plan,
+          weather: widget.weather,
+          store: widget.store,
+        ),
       ),
     );
     // Saved places may have changed order; refresh chips.
     if (mounted) setState(() {});
+    _refreshFeedback();
   }
 
   Future<void> _findMatches() async {
@@ -183,6 +220,13 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
             Text('TwinClimate', style: TextStyle(fontWeight: FontWeight.w700)),
           ],
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Comfort profile',
+            icon: const Icon(Icons.accessibility_new),
+            onPressed: _openComfortProfile,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Center(
@@ -193,6 +237,16 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (_feedbackRecord != null) ...[
+                    FeedbackCard(
+                      key: ValueKey(_feedbackRecord!.id),
+                      record: _feedbackRecord!,
+                      store: widget.store,
+                      weather: widget.weather,
+                      onDone: _refreshFeedback,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   RacesSection(
                     store: widget.store,
                     weather: widget.weather,

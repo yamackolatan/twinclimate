@@ -88,7 +88,6 @@ String windPhrase(double windKmh, double gustKmh) {
   } else {
     word = 'very windy';
   }
-  final gustNote =
-      gustKmh >= 45 ? ', gusts to ${gustKmh.round()} km/h' : '';
+  final gustNote = gustKmh >= 45 ? ', gusts to ${gustKmh.round()} km/h' : '';
   return '$word $wind km/h$gustNote';
 }

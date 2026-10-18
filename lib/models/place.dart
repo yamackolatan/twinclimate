@@ -35,28 +35,28 @@ class Place {
       (longitude - other.longitude).abs() < 0.001;
 
   factory Place.fromJson(Map<String, dynamic> json) => Place(
-        name: json['name'] as String,
-        region: json['region'] as String? ?? '',
-        country: json['country'] as String? ?? '',
-        latitude: (json['latitude'] as num).toDouble(),
-        longitude: (json['longitude'] as num).toDouble(),
-      );
+    name: json['name'] as String,
+    region: json['region'] as String? ?? '',
+    country: json['country'] as String? ?? '',
+    latitude: (json['latitude'] as num).toDouble(),
+    longitude: (json['longitude'] as num).toDouble(),
+  );
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'region': region,
-        'country': country,
-        'latitude': latitude,
-        'longitude': longitude,
-      };
+    'name': name,
+    'region': region,
+    'country': country,
+    'latitude': latitude,
+    'longitude': longitude,
+  };
 
   static String encodeList(List<Place> places) =>
       jsonEncode([for (final p in places) p.toJson()]);
 
   static List<Place> decodeList(String encoded) => [
-        for (final item in jsonDecode(encoded) as List)
-          Place.fromJson(item as Map<String, dynamic>),
-      ];
+    for (final item in jsonDecode(encoded) as List)
+      Place.fromJson(item as Map<String, dynamic>),
+  ];
 }
 
 /// Bundled quick-pick training spots (Istanbul area, per the PRD).

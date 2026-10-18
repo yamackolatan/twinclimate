@@ -7,10 +7,7 @@ import 'services/weather_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final store = await PrefsStore.load();
-  runApp(TwinClimateApp(
-    store: store,
-    weather: OpenMeteoWeatherService(),
-  ));
+  runApp(TwinClimateApp(store: store, weather: OpenMeteoWeatherService()));
 }
 
 class TwinClimateApp extends StatelessWidget {

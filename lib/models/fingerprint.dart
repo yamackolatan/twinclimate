@@ -11,8 +11,8 @@ class Stat {
   double get low => mean - sd;
   double get high => mean + sd;
 
-  factory Stat.fromJson(Map<String, dynamic> json) => Stat(
-      (json['mean'] as num).toDouble(), (json['sd'] as num).toDouble());
+  factory Stat.fromJson(Map<String, dynamic> json) =>
+      Stat((json['mean'] as num).toDouble(), (json['sd'] as num).toDouble());
 
   Map<String, dynamic> toJson() => {'mean': mean, 'sd': sd};
 }
@@ -54,30 +54,29 @@ class ConditionStats {
   /// the race hours.
   static const wetDayThresholdMm = 1.0;
 
-  factory ConditionStats.fromJson(Map<String, dynamic> json) =>
-      ConditionStats(
-        temperature: Stat.fromJson(json['temperature'] as Map<String, dynamic>),
-        apparent: Stat.fromJson(json['apparent'] as Map<String, dynamic>),
-        humidity: Stat.fromJson(json['humidity'] as Map<String, dynamic>),
-        wind: Stat.fromJson(json['wind'] as Map<String, dynamic>),
-        gust: Stat.fromJson(json['gust'] as Map<String, dynamic>),
-        rainChance: (json['rainChance'] as num).toDouble(),
-        wetDayRainMm: (json['wetDayRainMm'] as num).toDouble(),
-        dayCount: json['dayCount'] as int,
-        hourCount: json['hourCount'] as int,
-      );
+  factory ConditionStats.fromJson(Map<String, dynamic> json) => ConditionStats(
+    temperature: Stat.fromJson(json['temperature'] as Map<String, dynamic>),
+    apparent: Stat.fromJson(json['apparent'] as Map<String, dynamic>),
+    humidity: Stat.fromJson(json['humidity'] as Map<String, dynamic>),
+    wind: Stat.fromJson(json['wind'] as Map<String, dynamic>),
+    gust: Stat.fromJson(json['gust'] as Map<String, dynamic>),
+    rainChance: (json['rainChance'] as num).toDouble(),
+    wetDayRainMm: (json['wetDayRainMm'] as num).toDouble(),
+    dayCount: json['dayCount'] as int,
+    hourCount: json['hourCount'] as int,
+  );
 
   Map<String, dynamic> toJson() => {
-        'temperature': temperature.toJson(),
-        'apparent': apparent.toJson(),
-        'humidity': humidity.toJson(),
-        'wind': wind.toJson(),
-        'gust': gust.toJson(),
-        'rainChance': rainChance,
-        'wetDayRainMm': wetDayRainMm,
-        'dayCount': dayCount,
-        'hourCount': hourCount,
-      };
+    'temperature': temperature.toJson(),
+    'apparent': apparent.toJson(),
+    'humidity': humidity.toJson(),
+    'wind': wind.toJson(),
+    'gust': gust.toJson(),
+    'rainChance': rainChance,
+    'wetDayRainMm': wetDayRainMm,
+    'dayCount': dayCount,
+    'hourCount': hourCount,
+  };
 }
 
 /// Typical conditions for one leg of the race.
@@ -98,18 +97,18 @@ class LegFingerprint {
   final ConditionStats stats;
 
   factory LegFingerprint.fromJson(Map<String, dynamic> json) => LegFingerprint(
-        sport: Sport.values.byName(json['sport'] as String),
-        startOffset: json['startOffset'] as int,
-        endOffset: json['endOffset'] as int,
-        stats: ConditionStats.fromJson(json['stats'] as Map<String, dynamic>),
-      );
+    sport: Sport.values.byName(json['sport'] as String),
+    startOffset: json['startOffset'] as int,
+    endOffset: json['endOffset'] as int,
+    stats: ConditionStats.fromJson(json['stats'] as Map<String, dynamic>),
+  );
 
   Map<String, dynamic> toJson() => {
-        'sport': sport.name,
-        'startOffset': startOffset,
-        'endOffset': endOffset,
-        'stats': stats.toJson(),
-      };
+    'sport': sport.name,
+    'startOffset': startOffset,
+    'endOffset': endOffset,
+    'stats': stats.toJson(),
+  };
 }
 
 /// Average temperature at one clock hour during the race window.
@@ -120,8 +119,8 @@ class ProfileHour {
   final int hour;
   final double temperature;
 
-  factory ProfileHour.fromJson(Map<String, dynamic> json) => ProfileHour(
-      json['hour'] as int, (json['temperature'] as num).toDouble());
+  factory ProfileHour.fromJson(Map<String, dynamic> json) =>
+      ProfileHour(json['hour'] as int, (json['temperature'] as num).toDouble());
 
   Map<String, dynamic> toJson() => {'hour': hour, 'temperature': temperature};
 }
@@ -163,8 +162,9 @@ class RaceFingerprint {
         firstYear: json['firstYear'] as int,
         lastYear: json['lastYear'] as int,
         yearCount: json['yearCount'] as int,
-        overall:
-            ConditionStats.fromJson(json['overall'] as Map<String, dynamic>),
+        overall: ConditionStats.fromJson(
+          json['overall'] as Map<String, dynamic>,
+        ),
         legs: [
           for (final leg in json['legs'] as List)
             LegFingerprint.fromJson(leg as Map<String, dynamic>),
@@ -176,13 +176,13 @@ class RaceFingerprint {
       );
 
   Map<String, dynamic> toJson() => {
-        'key': key,
-        'computedAt': computedAt.toIso8601String(),
-        'firstYear': firstYear,
-        'lastYear': lastYear,
-        'yearCount': yearCount,
-        'overall': overall.toJson(),
-        'legs': [for (final leg in legs) leg.toJson()],
-        'profile': [for (final hour in profile) hour.toJson()],
-      };
+    'key': key,
+    'computedAt': computedAt.toIso8601String(),
+    'firstYear': firstYear,
+    'lastYear': lastYear,
+    'yearCount': yearCount,
+    'overall': overall.toJson(),
+    'legs': [for (final leg in legs) leg.toJson()],
+    'profile': [for (final hour in profile) hour.toJson()],
+  };
 }

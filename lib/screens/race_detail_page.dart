@@ -65,15 +65,17 @@ class _RaceDetailPageState extends State<RaceDetailPage> {
       _done = 0;
     });
     try {
-      final fingerprint = await _service.compute(race,
-          onProgress: (done, total) {
-        if (mounted) {
-          setState(() {
-            _done = done;
-            _total = total;
-          });
-        }
-      });
+      final fingerprint = await _service.compute(
+        race,
+        onProgress: (done, total) {
+          if (mounted) {
+            setState(() {
+              _done = done;
+              _total = total;
+            });
+          }
+        },
+      );
       // Cache it even if the user has left the page, unless the race was
       // edited or deleted in the meantime.
       final latest = widget.store.raceById(race.id);
@@ -169,14 +171,17 @@ class _RaceDetailPageState extends State<RaceDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Looking at 10 years of weather in ${race.place.name}…',
-                style: theme.textTheme.titleSmall),
+            Text(
+              'Looking at 10 years of weather in ${race.place.name}…',
+              style: theme.textTheme.titleSmall,
+            ),
             const SizedBox(height: 12),
-            LinearProgressIndicator(
-                value: _total == 0 ? null : _done / _total),
+            LinearProgressIndicator(value: _total == 0 ? null : _done / _total),
             const SizedBox(height: 8),
-            Text(_total == 0 ? 'Starting…' : '$_done of $_total years done',
-                style: theme.textTheme.bodySmall),
+            Text(
+              _total == 0 ? 'Starting…' : '$_done of $_total years done',
+              style: theme.textTheme.bodySmall,
+            ),
           ],
         ),
       ),
@@ -193,11 +198,15 @@ class _RaceDetailPageState extends State<RaceDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_error!,
-                style: TextStyle(color: theme.colorScheme.onErrorContainer)),
+            Text(
+              _error!,
+              style: TextStyle(color: theme.colorScheme.onErrorContainer),
+            ),
             const SizedBox(height: 8),
             FilledButton.tonal(
-                onPressed: _compute, child: const Text('Try again')),
+              onPressed: _compute,
+              child: const Text('Try again'),
+            ),
           ],
         ),
       ),
@@ -225,28 +234,33 @@ class _RaceHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final muted = theme.textTheme.bodyMedium
-        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final muted = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(children: [
-          const Icon(Icons.location_on_outlined, size: 18),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              [race.place.name, race.place.subtitle]
-                  .where((s) => s.isNotEmpty)
-                  .join(', '),
-              style: theme.textTheme.titleMedium,
+        Row(
+          children: [
+            const Icon(Icons.location_on_outlined, size: 18),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                [
+                  race.place.name,
+                  race.place.subtitle,
+                ].where((s) => s.isNotEmpty).join(', '),
+                style: theme.textTheme.titleMedium,
+              ),
             ),
-          ),
-        ]),
+          ],
+        ),
         const SizedBox(height: 4),
         Text(
-            '${formatFullDate(race.date)} · '
-            '${countdownText(race.date, DateTime.now())}',
-            style: muted),
+          '${formatFullDate(race.date)} · '
+          '${countdownText(race.date, DateTime.now())}',
+          style: muted,
+        ),
         const SizedBox(height: 4),
         Text(
           race.isMultisport
@@ -275,8 +289,9 @@ class _FingerprintView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall
-        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     final profile = profileLine(race, fingerprint);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -291,8 +306,9 @@ class _FingerprintView extends StatelessWidget {
             child: Text(
               fingerprintHeadline(race, fingerprint),
               style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w600),
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),
@@ -320,9 +336,11 @@ class _FingerprintView extends StatelessWidget {
               clipBehavior: Clip.antiAlias,
               child: ExpansionTile(
                 leading: Icon(sportIcon(leg.sport)),
-                title: Text('${leg.sport.label} '
-                    '${race.clockAt(leg.startOffset)}–'
-                    '${race.clockAt(leg.endOffset)}'),
+                title: Text(
+                  '${leg.sport.label} '
+                  '${race.clockAt(leg.startOffset)}–'
+                  '${race.clockAt(leg.endOffset)}',
+                ),
                 subtitle: Text(legLine(leg)),
                 childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 children: [
@@ -331,9 +349,10 @@ class _FingerprintView extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                          'Water temperature isn\'t included yet — it\'s '
-                          'planned for a later version.',
-                          style: muted),
+                        'Water temperature isn\'t included yet — it\'s '
+                        'planned for a later version.',
+                        style: muted,
+                      ),
                     ),
                 ],
               ),
@@ -364,14 +383,20 @@ class _ConditionTable extends StatelessWidget {
               children: [
                 SizedBox(
                   width: 110,
-                  child: Text(label,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant)),
+                  child: Text(
+                    label,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
                 Expanded(
-                  child: Text(value,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  child: Text(
+                    value,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),

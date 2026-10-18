@@ -30,14 +30,22 @@ int _overnightDays(Race race) =>
 /// (race date ± [fingerprintDaySpread] days) is already in the archive,
 /// oldest first.
 List<int> fingerprintYears(Race race, DateTime today) {
-  final cutoff = DateTime.utc(today.year, today.month, today.day)
-      .subtract(_archiveLag);
+  final cutoff = DateTime.utc(
+    today.year,
+    today.month,
+    today.day,
+  ).subtract(_archiveLag);
   final years = <int>[];
-  for (var year = today.year;
-      years.length < fingerprintYearCount && year > today.year - 40;
-      year--) {
-    final windowEnd = DateTime.utc(year, race.date.month,
-        race.date.day + fingerprintDaySpread + _overnightDays(race));
+  for (
+    var year = today.year;
+    years.length < fingerprintYearCount && year > today.year - 40;
+    year--
+  ) {
+    final windowEnd = DateTime.utc(
+      year,
+      race.date.month,
+      race.date.day + fingerprintDaySpread + _overnightDays(race),
+    );
     if (windowEnd.isBefore(cutoff)) years.add(year);
   }
   return years.reversed.toList();
@@ -45,10 +53,13 @@ List<int> fingerprintYears(Race race, DateTime today) {
 
 /// First and last calendar day of history needed for [year].
 (DateTime, DateTime) historyRange(Race race, int year) => (
-      DateTime.utc(year, race.date.month, race.date.day - fingerprintDaySpread),
-      DateTime.utc(year, race.date.month,
-          race.date.day + fingerprintDaySpread + _overnightDays(race)),
-    );
+  DateTime.utc(year, race.date.month, race.date.day - fingerprintDaySpread),
+  DateTime.utc(
+    year,
+    race.date.month,
+    race.date.day + fingerprintDaySpread + _overnightDays(race),
+  ),
+);
 
 /// Collects hourly readings for one time window (whole race or one leg)
 /// across all past race days.
@@ -100,7 +111,7 @@ Stat _stat(List<double> values) {
   final mean = _mean(values);
   final variance =
       values.map((v) => (v - mean) * (v - mean)).reduce((a, b) => a + b) /
-          values.length;
+      values.length;
   return Stat(mean, math.sqrt(variance));
 }
 
@@ -133,8 +144,13 @@ RaceFingerprint buildFingerprint({
 
   for (final year in years) {
     for (var d = -fingerprintDaySpread; d <= fingerprintDaySpread; d++) {
-      final start = DateTime.utc(year, race.date.month, race.date.day + d,
-          race.startHour, race.startMinute);
+      final start = DateTime.utc(
+        year,
+        race.date.month,
+        race.date.day + d,
+        race.startHour,
+        race.startMinute,
+      );
       final end = start.add(Duration(minutes: race.totalMinutes));
 
       final raceSlots = _slots(start, end);
@@ -166,7 +182,8 @@ RaceFingerprint buildFingerprint({
 
   if (overall.temperature.isEmpty) {
     throw FingerprintException(
-        'No past weather records were found for this place and date.');
+      'No past weather records were found for this place and date.',
+    );
   }
 
   final windows = race.legWindows;

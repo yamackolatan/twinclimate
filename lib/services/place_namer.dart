@@ -21,8 +21,17 @@ class OsmPlaceNamer implements PlaceNamer {
 
   /// Most specific useful label first.
   static const _addressKeys = [
-    'village', 'town', 'suburb', 'hamlet', 'neighbourhood', 'quarter',
-    'city_district', 'city', 'municipality', 'county', 'state',
+    'village',
+    'town',
+    'suburb',
+    'hamlet',
+    'neighbourhood',
+    'quarter',
+    'city_district',
+    'city',
+    'municipality',
+    'county',
+    'state',
   ];
 
   @override
@@ -32,13 +41,15 @@ class OsmPlaceNamer implements PlaceNamer {
     _lastRequest = DateTime.now();
     try {
       final response = await _client
-          .get(Uri.https('nominatim.openstreetmap.org', '/reverse', {
-            'format': 'jsonv2',
-            'lat': latitude.toStringAsFixed(5),
-            'lon': longitude.toStringAsFixed(5),
-            'zoom': '14',
-            'accept-language': 'en',
-          }))
+          .get(
+            Uri.https('nominatim.openstreetmap.org', '/reverse', {
+              'format': 'jsonv2',
+              'lat': latitude.toStringAsFixed(5),
+              'lon': longitude.toStringAsFixed(5),
+              'zoom': '14',
+              'accept-language': 'en',
+            }),
+          )
           .timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) return null;
       final json = jsonDecode(response.body) as Map<String, dynamic>;

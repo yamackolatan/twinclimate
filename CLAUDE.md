@@ -234,6 +234,35 @@ location+time list with scores and honest notes. ACCEPT (flexible): same but
 ACCEPT: give "too warm → torso" feedback twice on warm runs → next warm-run
 kit shows a lighter torso item with a personalized reason.
 
+**Owner decisions for F4 (confirmed Oct 2026 — build to these):**
+- **Card timing:** after the session's expected *finish* (not its start);
+  only the most recent finished session; disappears after 3 days;
+  "I didn't go" / "Not now" close it.
+- **Feedback design (chosen after research, see conversation):** 2 taps —
+  how did it feel → optional where (5 parts or "Everywhere"). **Only on
+  uncomfortable days**, an optional third question: "We suggested: X. Did
+  you wear that?" (Yes / Something warmer / Something lighter / Skip). It
+  is skipped when the **packing checklist** already shows the suggestion
+  was packed (ticks are saved and double as "what you wore"). Too warm in
+  something warmer, or too cold in something lighter, is not learned from.
+- **Learning:** zones below 5 °C / 5–15 °C / 15 °C+ (felt temperature);
+  two matching reports = one step (6 °C ≈ one gear band), "just right"
+  cancels one report, max ±2 steps; "Everywhere" counts for all parts;
+  separate profiles per sport.
+- **Weather anchor:** the session's actual recorded "feels like" (forecast
+  API, past days), falling back to the forecast shown; the message says
+  when the two differed by 3 °C or more.
+- **Ask less once it knows you:** after 4 "just right" in a row for a sport
+  and zone, only every third finished session is asked about.
+- Items changed by the profile get a reason prefix ("You run warm above
+  15°C, so this is lighter than usual."); unchanged items get none.
+- Settings → Comfort profile (person icon on the home screen): Run / Bike /
+  Swim tabs, a −2…+2 slider per body part, "What we've learned" with
+  Forget, recent feedback with delete, Reset everything.
+- Code: `lib/models/comfort.dart`, `lib/logic/feedback_logic.dart`,
+  `lib/widgets/feedback_card.dart`, `lib/screens/comfort_profile_page.dart`;
+  gear engine takes an optional `ComfortProfile`.
+
 ### F5 — Packing reminder
 - Toggle on the result screen; local notification evening before (19:00) or
   morning-of with conditions + kit highlights. On web preview, where

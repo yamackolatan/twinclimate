@@ -34,22 +34,22 @@ class RaceLeg {
   }
 
   RaceLeg copyWith({double? distanceKm, int? minutes}) => RaceLeg(
-        sport: sport,
-        distanceKm: distanceKm ?? this.distanceKm,
-        minutes: minutes ?? this.minutes,
-      );
+    sport: sport,
+    distanceKm: distanceKm ?? this.distanceKm,
+    minutes: minutes ?? this.minutes,
+  );
 
   factory RaceLeg.fromJson(Map<String, dynamic> json) => RaceLeg(
-        sport: Sport.values.byName(json['sport'] as String),
-        distanceKm: (json['distanceKm'] as num).toDouble(),
-        minutes: json['minutes'] as int,
-      );
+    sport: Sport.values.byName(json['sport'] as String),
+    distanceKm: (json['distanceKm'] as num).toDouble(),
+    minutes: json['minutes'] as int,
+  );
 
   Map<String, dynamic> toJson() => {
-        'sport': sport.name,
-        'distanceKm': distanceKm,
-        'minutes': minutes,
-      };
+    'sport': sport.name,
+    'distanceKm': distanceKm,
+    'minutes': minutes,
+  };
 }
 
 /// A leg placed on the clock: starts [startOffset] minutes after the race
@@ -121,74 +121,73 @@ class Race {
 
   /// "Swim 07:00–08:15 · Bike 08:15–14:15 · Run 14:15–18:45"
   String get legTimeline => [
-        for (final w in legWindows)
-          '${w.leg.sport.label} ${clockAt(w.startOffset)}–${clockAt(w.endOffset)}',
-      ].join(' · ');
+    for (final w in legWindows)
+      '${w.leg.sport.label} ${clockAt(w.startOffset)}–${clockAt(w.endOffset)}',
+  ].join(' · ');
 
   /// Everything the fingerprint depends on: where, which calendar day, and
   /// which hours each leg covers. Renaming a race, or a distance change
   /// that keeps the same times, does not trigger a recalculation.
   String get fingerprintKey => [
-        place.latitude.toStringAsFixed(3),
-        place.longitude.toStringAsFixed(3),
-        date.month,
-        date.day,
-        startMinutesOfDay,
-        for (final w in legWindows)
-          '${w.leg.sport.name}:${w.startOffset}-${w.endOffset}',
-      ].join('|');
+    place.latitude.toStringAsFixed(3),
+    place.longitude.toStringAsFixed(3),
+    date.month,
+    date.day,
+    startMinutesOfDay,
+    for (final w in legWindows)
+      '${w.leg.sport.name}:${w.startOffset}-${w.endOffset}',
+  ].join('|');
 
   RaceFingerprint? get validFingerprint =>
       fingerprint != null && fingerprint!.key == fingerprintKey
-          ? fingerprint
-          : null;
+      ? fingerprint
+      : null;
 
   Race withFingerprint(RaceFingerprint? value) => Race(
-        id: id,
-        name: name,
-        place: place,
-        date: date,
-        startHour: startHour,
-        startMinute: startMinute,
-        legs: legs,
-        fingerprint: value,
-      );
+    id: id,
+    name: name,
+    place: place,
+    date: date,
+    startHour: startHour,
+    startMinute: startMinute,
+    legs: legs,
+    fingerprint: value,
+  );
 
   factory Race.fromJson(Map<String, dynamic> json) => Race(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        place: Place.fromJson(json['place'] as Map<String, dynamic>),
-        date: DateTime.parse(json['date'] as String),
-        startHour: json['startHour'] as int,
-        startMinute: json['startMinute'] as int,
-        legs: [
-          for (final leg in json['legs'] as List)
-            RaceLeg.fromJson(leg as Map<String, dynamic>),
-        ],
-        fingerprint: json['fingerprint'] == null
-            ? null
-            : RaceFingerprint.fromJson(
-                json['fingerprint'] as Map<String, dynamic>),
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    place: Place.fromJson(json['place'] as Map<String, dynamic>),
+    date: DateTime.parse(json['date'] as String),
+    startHour: json['startHour'] as int,
+    startMinute: json['startMinute'] as int,
+    legs: [
+      for (final leg in json['legs'] as List)
+        RaceLeg.fromJson(leg as Map<String, dynamic>),
+    ],
+    fingerprint: json['fingerprint'] == null
+        ? null
+        : RaceFingerprint.fromJson(json['fingerprint'] as Map<String, dynamic>),
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'place': place.toJson(),
-        'date': dateParam(date),
-        'startHour': startHour,
-        'startMinute': startMinute,
-        'legs': [for (final leg in legs) leg.toJson()],
-        if (fingerprint != null) 'fingerprint': fingerprint!.toJson(),
-      };
+    'id': id,
+    'name': name,
+    'place': place.toJson(),
+    'date': dateParam(date),
+    'startHour': startHour,
+    'startMinute': startMinute,
+    'legs': [for (final leg in legs) leg.toJson()],
+    if (fingerprint != null) 'fingerprint': fingerprint!.toJson(),
+  };
 
   static String encodeList(List<Race> races) =>
       jsonEncode([for (final r in races) r.toJson()]);
 
   static List<Race> decodeList(String encoded) => [
-        for (final item in jsonDecode(encoded) as List)
-          Race.fromJson(item as Map<String, dynamic>),
-      ];
+    for (final item in jsonDecode(encoded) as List)
+      Race.fromJson(item as Map<String, dynamic>),
+  ];
 }
 
 /// A quick-fill button in the race form, e.g. "Ironman".
@@ -224,10 +223,12 @@ const List<RacePreset> triathlonPresets = [
 
 const List<RacePreset> runPresets = [
   RacePreset('10 km', [RaceLeg(sport: Sport.run, distanceKm: 10, minutes: 60)]),
-  RacePreset('Half',
-      [RaceLeg(sport: Sport.run, distanceKm: 21.1, minutes: 130)]),
-  RacePreset('Marathon',
-      [RaceLeg(sport: Sport.run, distanceKm: 42.2, minutes: 270)]),
+  RacePreset('Half', [
+    RaceLeg(sport: Sport.run, distanceKm: 21.1, minutes: 130),
+  ]),
+  RacePreset('Marathon', [
+    RaceLeg(sport: Sport.run, distanceKm: 42.2, minutes: 270),
+  ]),
 ];
 
 /// Quick-fill buttons that fit the chosen sports (none for other mixes).
@@ -239,10 +240,10 @@ List<RacePreset> presetsFor(Set<Sport> sports) {
 
 /// Sensible starting leg when a sport is ticked in the form.
 RaceLeg defaultLeg(Sport sport) => RaceLeg(
-      sport: sport,
-      distanceKm: sport.defaultKm,
-      minutes: RaceLeg.estimateMinutes(sport, sport.defaultKm),
-    );
+  sport: sport,
+  distanceKm: sport.defaultKm,
+  minutes: RaceLeg.estimateMinutes(sport, sport.defaultKm),
+);
 
 /// "2026-08-29"
 String dateParam(DateTime d) =>

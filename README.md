@@ -35,8 +35,10 @@ the same codebase.
    conditions best match race day: top 5 places, each with a recommended
    time window and a match score, for a specific date or the best day in
    the next 7–14 days.
-4. **Comfort profile** — the app learns whether you run hot or cold from
-   2-tap post-session feedback.
+4. ✅ **Comfort profile** — after a session, a 2-tap question ("How did it
+   feel?") teaches the app whether you run warm or cold, per body part and
+   temperature; kit suggestions adapt and say why. Optional sliders in
+   Settings.
 5. **Packing reminder** — the kit checklist pings you the evening before.
 
 ## See it in your browser (GitHub Pages)

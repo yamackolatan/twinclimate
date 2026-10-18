@@ -64,17 +64,22 @@ class _MatchResultPageState extends State<MatchResultPage> {
     });
     try {
       await _ensureFingerprint();
-      final result = await _matcher.run(_request, onProgress: (status) {
-        if (mounted) setState(() => _status = status);
-      });
+      final result = await _matcher.run(
+        _request,
+        onProgress: (status) {
+          if (mounted) setState(() => _status = status);
+        },
+      );
       if (!mounted) return;
       setState(() => _result = result);
       await _nameResults(result);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = e is WeatherServiceException
-          ? e.message
-          : 'Something went wrong while searching: $e');
+      setState(
+        () => _error = e is WeatherServiceException
+            ? e.message
+            : 'Something went wrong while searching: $e',
+      );
     }
   }
 
@@ -82,8 +87,10 @@ class _MatchResultPageState extends State<MatchResultPage> {
   Future<void> _ensureFingerprint() async {
     final race = _request.race;
     if (race.validFingerprint != null) return;
-    setState(() =>
-        _status = 'First looking at 10 years of weather in ${race.place.name}…');
+    setState(
+      () => _status =
+          'First looking at 10 years of weather in ${race.place.name}…',
+    );
     final fingerprint =
         await (widget.fingerprints ?? FingerprintService(widget.weather))
             .compute(race);
@@ -140,25 +147,30 @@ class _MatchResultPageState extends State<MatchResultPage> {
       latitude: r.spot.latitude,
       longitude: r.spot.longitude,
     );
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (context) => SessionResultPage(
-        plan: SessionPlan(
-          sport: _request.sport,
-          place: place,
-          start: r.best.start,
-          distanceKm: _request.distanceKm,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SessionResultPage(
+          plan: SessionPlan(
+            sport: _request.sport,
+            place: place,
+            start: r.best.start,
+            distanceKm: _request.distanceKm,
+          ),
+          weather: widget.weather,
+          store: widget.store,
         ),
-        weather: widget.weather,
       ),
-    ));
+    );
   }
 
   Future<void> _openMap(Spot spot) async {
     final lat = spot.latitude.toStringAsFixed(5);
     final lon = spot.longitude.toStringAsFixed(5);
     await launchUrl(
-      Uri.parse('https://www.openstreetmap.org/?mlat=$lat&mlon=$lon'
-          '#map=13/$lat/$lon'),
+      Uri.parse(
+        'https://www.openstreetmap.org/?mlat=$lat&mlon=$lon'
+        '#map=13/$lat/$lon',
+      ),
       webOnlyWindowName: '_blank',
     );
   }
@@ -207,8 +219,10 @@ class _MatchResultPageState extends State<MatchResultPage> {
         Text('Matching ${r.race.name}', style: theme.textTheme.titleLarge),
         if (target != null) ...[
           const SizedBox(height: 4),
-          Text('${_capitalised(target.label)}: typically '
-              '${conditionsLine(target.stats)}'),
+          Text(
+            '${_capitalised(target.label)}: typically '
+            '${conditionsLine(target.stats)}',
+          ),
         ],
         const SizedBox(height: 4),
         Text(
@@ -217,8 +231,9 @@ class _MatchResultPageState extends State<MatchResultPage> {
           '${r.rangeKm.round()} km of ${r.home.name} · $when · '
           'training ${r.window.label}'
           '${r.window.daylightOnly ? ' (daylight only)' : ''}',
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
@@ -253,8 +268,10 @@ class _MatchResultPageState extends State<MatchResultPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_error!,
-                style: TextStyle(color: theme.colorScheme.onErrorContainer)),
+            Text(
+              _error!,
+              style: TextStyle(color: theme.colorScheme.onErrorContainer),
+            ),
             const SizedBox(height: 8),
             FilledButton.tonal(onPressed: _run, child: const Text('Try again')),
           ],
@@ -265,8 +282,9 @@ class _MatchResultPageState extends State<MatchResultPage> {
 
   List<Widget> _results(MatchResult result) {
     final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall
-        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     if (result.results.isEmpty) {
       return [
         Text('No suitable time found', style: theme.textTheme.titleMedium),
@@ -289,15 +307,19 @@ class _MatchResultPageState extends State<MatchResultPage> {
                   'Best available: ${scoreText(result.bestScore)} — no close '
                   'match within ${_request.rangeKm.round()} km',
                   style: theme.textTheme.titleSmall?.copyWith(
-                      color: theme.colorScheme.onTertiaryContainer),
+                    color: theme.colorScheme.onTertiaryContainer,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 for (final note in result.notes)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 4),
-                    child: Text('• $note',
-                        style: TextStyle(
-                            color: theme.colorScheme.onTertiaryContainer)),
+                    child: Text(
+                      '• $note',
+                      style: TextStyle(
+                        color: theme.colorScheme.onTertiaryContainer,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -356,8 +378,9 @@ class _ResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final muted = theme.textTheme.bodySmall
-        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     final details = spotDetails(result.spot);
     final good = result.best.score >= goodMatchScore;
     return Card(
@@ -373,35 +396,46 @@ class _ResultCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text('$rank. ${spotTitle(result.spot)}',
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  child: Text(
+                    '$rank. ${spotTitle(result.spot)}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: good
                         ? theme.colorScheme.primaryContainer
                         : theme.colorScheme.tertiaryContainer,
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Text('${scoreText(result.best.score)} match',
-                      style: theme.textTheme.labelLarge),
+                  child: Text(
+                    '${scoreText(result.best.score)} match',
+                    style: theme.textTheme.labelLarge,
+                  ),
                 ),
               ],
             ),
             if (details.isNotEmpty) Text(details, style: muted),
             const SizedBox(height: 8),
             Text(bestStartText(result), style: theme.textTheme.bodyMedium),
-            Text(windowText(result),
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.w600)),
+            Text(
+              windowText(result),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 8),
             _ScoreBars(result: result),
             const SizedBox(height: 8),
-            Text(comparisonParts(result.best.conditions, target.stats)
-                .join(' · ')),
+            Text(
+              comparisonParts(result.best.conditions, target.stats).join(' · '),
+            ),
             Wrap(
               spacing: 8,
               children: [
@@ -434,8 +468,9 @@ class _ScoreBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final small = theme.textTheme.labelSmall
-        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final small = theme.textTheme.labelSmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     return SizedBox(
       height: 56,
       child: Row(
@@ -444,7 +479,8 @@ class _ScoreBars extends StatelessWidget {
           for (final option in result.dayScores)
             Expanded(
               child: Tooltip(
-                message: '${formatTime(option.start)}: '
+                message:
+                    '${formatTime(option.start)}: '
                     '${scoreText(option.score)}',
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,

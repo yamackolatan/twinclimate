@@ -5,7 +5,12 @@ import '../models/session.dart';
 /// "17–20°C" (or "about 18°C" when the range collapses).
 String temperatureRange(Stat stat) => _range(stat, '°C');
 
-String _range(Stat stat, String unit, {double floor = -999, double ceil = 999}) {
+String _range(
+  Stat stat,
+  String unit, {
+  double floor = -999,
+  double ceil = 999,
+}) {
   final low = stat.low.clamp(floor, ceil).round();
   final high = stat.high.clamp(floor, ceil).round();
   if (low == high) return 'about $low$unit';
@@ -50,14 +55,20 @@ String profileLine(Race race, RaceFingerprint fingerprint) {
   if (profile.isEmpty) return '';
   final first = profile.first;
   final last = profile.last;
-  final warmest = profile.reduce((a, b) => b.temperature > a.temperature ? b : a);
-  final coolest = profile.reduce((a, b) => b.temperature < a.temperature ? b : a);
-  final startText = 'About ${first.temperature.round()}°C at the '
+  final warmest = profile.reduce(
+    (a, b) => b.temperature > a.temperature ? b : a,
+  );
+  final coolest = profile.reduce(
+    (a, b) => b.temperature < a.temperature ? b : a,
+  );
+  final startText =
+      'About ${first.temperature.round()}°C at the '
       '${race.clockAt(0)} start';
   if (warmest.temperature - coolest.temperature < 1.5) {
     return 'Steady around ${first.temperature.round()}°C through the race.';
   }
-  final finishText = 'about ${last.temperature.round()}°C at the '
+  final finishText =
+      'about ${last.temperature.round()}°C at the '
       '${race.clockAt(race.totalMinutes)} finish';
   if (warmest != first && warmest != last) {
     return '$startText, warmest around ${_hour(warmest.hour)} '
@@ -81,21 +92,21 @@ List<(String, String)> conditionRows(ConditionStats stats) {
     (
       'Humidity',
       '${_range(stats.humidity, '%', floor: 0, ceil: 100)} · '
-          '${humidityWord(stats.humidity.mean)}'
+          '${humidityWord(stats.humidity.mean)}',
     ),
     (
       'Wind',
       '${windRange(stats.wind)}, gusts up to about '
-          '${stats.gust.high.round()} km/h'
+          '${stats.gust.high.round()} km/h',
     ),
     (
       'Rain',
       wet == 0
           ? 'Dry on all ${stats.dayCount} past race days'
           : '${rainChanceText(stats)} chance — wet on $wet of '
-              '${stats.dayCount} past race days, about '
-              '${stats.wetDayRainMm.toStringAsFixed(stats.wetDayRainMm < 10 ? 1 : 0)} mm '
-              'on those days'
+                '${stats.dayCount} past race days, about '
+                '${stats.wetDayRainMm.toStringAsFixed(stats.wetDayRainMm < 10 ? 1 : 0)} mm '
+                'on those days',
     ),
   ];
 }

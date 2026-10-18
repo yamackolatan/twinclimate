@@ -50,10 +50,13 @@ class FingerprintService {
   /// request stalls, and one failed year would otherwise sink the result.
   Future<List<PastHour>> _fetchYear(Race race, int year) async {
     final (first, last) = historyRange(race, year);
-    for (var attempt = 1;; attempt++) {
+    for (var attempt = 1; ; attempt++) {
       try {
         return await weather.fetchHistory(
-            place: race.place, firstDay: first, lastDay: last);
+          place: race.place,
+          firstDay: first,
+          lastDay: last,
+        );
       } on WeatherServiceException catch (e) {
         if (!e.retryable || attempt >= attempts) rethrow;
         await Future<void>.delayed(retryDelay * attempt);

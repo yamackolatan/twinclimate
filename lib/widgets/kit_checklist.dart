@@ -6,16 +6,40 @@ import '../models/gear.dart';
 /// The kit list, grouped HEAD / TORSO / HANDS / LEGS / FEET, tappable as a
 /// packing checklist with an "all packed" state. Rain/wind items stand out.
 class KitChecklist extends StatefulWidget {
-  const KitChecklist({super.key, required this.items});
+  const KitChecklist({
+    super.key,
+    required this.items,
+    this.initialPacked = const {},
+    this.onPackedChanged,
+  });
 
   final List<GearItem> items;
+
+  /// Names of items already ticked (e.g. when reopening a session).
+  final Set<String> initialPacked;
+
+  /// Called with the ticked item names and whether everything is packed.
+  /// Ticks double as "what you wore" for the comfort profile (F4).
+  final void Function(Set<String> packed, bool allPacked)? onPackedChanged;
 
   @override
   State<KitChecklist> createState() => _KitChecklistState();
 }
 
 class _KitChecklistState extends State<KitChecklist> {
-  final Set<GearItem> _packed = {};
+  late final Set<GearItem> _packed = {
+    for (final item in widget.items)
+      if (widget.initialPacked.contains(item.name)) item,
+  };
+
+  void _toggle(GearItem item) {
+    setState(() {
+      _packed.contains(item) ? _packed.remove(item) : _packed.add(item);
+    });
+    widget.onPackedChanged?.call({
+      for (final i in _packed) i.name,
+    }, _packed.length == widget.items.length);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,20 +58,18 @@ class _KitChecklistState extends State<KitChecklist> {
             Text('Your kit', style: Theme.of(context).textTheme.titleLarge),
             Text(
               '$packed / $total packed',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(color: scheme.onSurfaceVariant),
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
           'Tap items as you pack them.',
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: scheme.onSurfaceVariant),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
         ),
         const SizedBox(height: 8),
         if (allPacked)
@@ -81,10 +103,9 @@ class _KitChecklistState extends State<KitChecklist> {
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
               child: Text(
                 'Nothing extra needed here.',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: scheme.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             )
           else
@@ -95,16 +116,16 @@ class _KitChecklistState extends State<KitChecklist> {
   }
 
   Widget _sectionHeader(BuildContext context, BodyPart part) => Padding(
-        padding: const EdgeInsets.fromLTRB(0, 14, 0, 6),
-        child: Text(
-          part.label.toUpperCase(),
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                letterSpacing: 1.2,
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(0, 14, 0, 6),
+    child: Text(
+      part.label.toUpperCase(),
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        letterSpacing: 1.2,
+        color: Theme.of(context).colorScheme.primary,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
 
   Widget _itemTile(BuildContext context, GearItem item) {
     final scheme = Theme.of(context).colorScheme;
@@ -119,9 +140,7 @@ class _KitChecklistState extends State<KitChecklist> {
           : scheme.surfaceContainerLow,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => setState(() {
-          isPacked ? _packed.remove(item) : _packed.add(item);
-        }),
+        onTap: () => _toggle(item),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
@@ -161,13 +180,17 @@ class _KitChecklistState extends State<KitChecklist> {
                           const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 1),
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
                             decoration: BoxDecoration(
                               border: Border.all(color: scheme.outline),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Text('optional',
-                                style: Theme.of(context).textTheme.labelSmall),
+                            child: Text(
+                              'optional',
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
                           ),
                         ],
                       ],
@@ -175,10 +198,9 @@ class _KitChecklistState extends State<KitChecklist> {
                     const SizedBox(height: 2),
                     Text(
                       item.reason,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),

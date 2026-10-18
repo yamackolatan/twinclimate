@@ -112,11 +112,27 @@ String formatDuration(double hours) {
 }
 
 const List<String> _weekdayNames = [
-  'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun',
+  'Mon',
+  'Tue',
+  'Wed',
+  'Thu',
+  'Fri',
+  'Sat',
+  'Sun',
 ];
 const List<String> _monthNames = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 /// "Sat 13 Jun"

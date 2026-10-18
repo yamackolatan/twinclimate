@@ -45,13 +45,15 @@ class _RacesSectionState extends State<RacesSection> {
   }
 
   Future<void> _open(Race race) async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (context) => RaceDetailPage(
-        raceId: race.id,
-        store: widget.store,
-        weather: widget.weather,
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => RaceDetailPage(
+          raceId: race.id,
+          store: widget.store,
+          weather: widget.weather,
+        ),
       ),
-    ));
+    );
     if (mounted) setState(() {});
     widget.onChanged?.call();
   }
@@ -60,8 +62,9 @@ class _RacesSectionState extends State<RacesSection> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final races = widget.store.races;
-    final muted = theme.textTheme.bodySmall
-        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
 
     if (races.isEmpty) {
       return Card(
@@ -71,7 +74,8 @@ class _RacesSectionState extends State<RacesSection> {
           leading: const Icon(Icons.emoji_events_outlined),
           title: const Text('Training for a race?'),
           subtitle: const Text(
-              'Optional: add it to see its typical race-day weather.'),
+            'Optional: add it to see its typical race-day weather.',
+          ),
           trailing: const Icon(Icons.add),
           onTap: _add,
         ),
@@ -84,7 +88,8 @@ class _RacesSectionState extends State<RacesSection> {
         Row(
           children: [
             Expanded(
-                child: Text('My races', style: theme.textTheme.titleMedium)),
+              child: Text('My races', style: theme.textTheme.titleMedium),
+            ),
             if (races.length < maxRaces)
               TextButton.icon(
                 onPressed: _add,
@@ -98,8 +103,9 @@ class _RacesSectionState extends State<RacesSection> {
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-                'Up to $maxRaces races – delete one to add another.',
-                style: muted),
+              'Up to $maxRaces races – delete one to add another.',
+              style: muted,
+            ),
           ),
       ],
     );
@@ -113,7 +119,10 @@ class _RacesSectionState extends State<RacesSection> {
       color: theme.colorScheme.surfaceContainerLow,
       child: ListTile(
         leading: Icon(
-            race.isMultisport ? Icons.emoji_events : sportIcon(race.legs.first.sport)),
+          race.isMultisport
+              ? Icons.emoji_events
+              : sportIcon(race.legs.first.sport),
+        ),
         title: Text(race.name),
         subtitle: Text(
           '${formatFullDate(race.date)} · '

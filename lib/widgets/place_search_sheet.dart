@@ -28,8 +28,9 @@ class PlaceSearchSheet extends StatefulWidget {
       isScrollControlled: true,
       useSafeArea: true,
       builder: (context) => Padding(
-        padding:
-            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: PlaceSearchSheet(weather: weather, savedPlaces: savedPlaces),
       ),
     );
@@ -119,8 +120,9 @@ class _PlaceSearchSheetState extends State<PlaceSearchSheet> {
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
                 hintText: 'Search any town, park or beach…',
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(28)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(28),
+                ),
               ),
             ),
           ),
@@ -130,18 +132,25 @@ class _PlaceSearchSheetState extends State<PlaceSearchSheet> {
               controller: scrollController,
               children: [
                 if (local.isNotEmpty) ...[
-                  _sectionLabel(context,
-                      _query.isEmpty ? 'Your spots' : 'Your matching spots'),
+                  _sectionLabel(
+                    context,
+                    _query.isEmpty ? 'Your spots' : 'Your matching spots',
+                  ),
                   for (final place in local)
-                    _placeTile(place,
-                        icon: place.isPreset ? Icons.star : Icons.history),
+                    _placeTile(
+                      place,
+                      icon: place.isPreset ? Icons.star : Icons.history,
+                    ),
                 ],
                 if (_error != null)
                   Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text(_error!,
-                        style: TextStyle(
-                            color: Theme.of(context).colorScheme.error)),
+                    child: Text(
+                      _error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
                   ),
                 if (_results.isNotEmpty) ...[
                   _sectionLabel(context, 'Search results'),
@@ -166,18 +175,19 @@ class _PlaceSearchSheetState extends State<PlaceSearchSheet> {
   }
 
   Widget _sectionLabel(BuildContext context, String text) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-        child: Text(
-          text,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+    child: Text(
+      text,
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
 
   Widget _placeTile(Place place, {required IconData icon}) => ListTile(
-        leading: Icon(icon),
-        title: Text(place.name),
-        subtitle: place.subtitle.isEmpty ? null : Text(place.subtitle),
-        onTap: () => Navigator.of(context).pop(place),
-      );
+    leading: Icon(icon),
+    title: Text(place.name),
+    subtitle: place.subtitle.isEmpty ? null : Text(place.subtitle),
+    onTap: () => Navigator.of(context).pop(place),
+  );
 }

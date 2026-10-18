@@ -51,7 +51,7 @@ class WeatherServiceException implements Exception {
 /// Open-Meteo implementation. Free and keyless; supports browsers (CORS).
 class OpenMeteoWeatherService implements WeatherService {
   OpenMeteoWeatherService({http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   final http.Client _client;
 
@@ -107,7 +107,8 @@ class OpenMeteoWeatherService implements WeatherService {
     final hours = _parseForecast(json);
     if (hours.isEmpty) {
       throw WeatherServiceException(
-          'The forecast came back empty for this date.');
+        'The forecast came back empty for this date.',
+      );
     }
     return hours;
   }
@@ -131,7 +132,8 @@ class OpenMeteoWeatherService implements WeatherService {
     final items = decoded is List ? decoded : [decoded];
     if (items.length != points.length) {
       throw WeatherServiceException(
-          'The forecast came back incomplete. Try again in a moment.');
+        'The forecast came back incomplete. Try again in a moment.',
+      );
     }
     return [
       for (final item in items.cast<Map<String, dynamic>>())
@@ -153,8 +155,10 @@ class OpenMeteoWeatherService implements WeatherService {
           temperatureC: _number(hourly['temperature_2m'], i),
           apparentC: _number(hourly['apparent_temperature'], i),
           humidityPercent: _number(hourly['relative_humidity_2m'], i),
-          precipProbabilityPercent:
-              _number(hourly['precipitation_probability'], i),
+          precipProbabilityPercent: _number(
+            hourly['precipitation_probability'],
+            i,
+          ),
           precipitationMm: _number(hourly['precipitation'], i),
           windKmh: _number(hourly['wind_speed_10m'], i),
           gustKmh: _number(hourly['wind_gusts_10m'], i),
@@ -197,15 +201,17 @@ class OpenMeteoWeatherService implements WeatherService {
         for (final name in _historyVariables) _maybeNumber(hourly[name], i),
       ];
       if (values.contains(null)) continue;
-      hours.add(PastHour(
-        time: DateTime.parse('${times[i]}Z'),
-        temperatureC: values[0]!,
-        apparentC: values[1]!,
-        humidityPercent: values[2]!,
-        precipitationMm: values[3]!,
-        windKmh: values[4]!,
-        gustKmh: values[5]!,
-      ));
+      hours.add(
+        PastHour(
+          time: DateTime.parse('${times[i]}Z'),
+          temperatureC: values[0]!,
+          apparentC: values[1]!,
+          humidityPercent: values[2]!,
+          precipitationMm: values[3]!,
+          windKmh: values[4]!,
+          gustKmh: values[5]!,
+        ),
+      );
     }
     return hours;
   }
@@ -222,24 +228,25 @@ class OpenMeteoWeatherService implements WeatherService {
   Future<Object?> _get(Uri uri, String what) async {
     final http.Response response;
     try {
-      response = await _client
-          .get(uri)
-          .timeout(const Duration(seconds: 15));
+      response = await _client.get(uri).timeout(const Duration(seconds: 15));
     } catch (_) {
       throw WeatherServiceException(
-          'Could not reach the weather service for the $what. '
-          'Check your internet connection and try again.');
+        'Could not reach the weather service for the $what. '
+        'Check your internet connection and try again.',
+      );
     }
     if (response.statusCode == 429) {
       throw WeatherServiceException(
-          'The free weather service has had too many requests from this '
-          'internet connection today. Try again later.',
-          retryable: false);
+        'The free weather service has had too many requests from this '
+        'internet connection today. Try again later.',
+        retryable: false,
+      );
     }
     if (response.statusCode != 200) {
       throw WeatherServiceException(
-          'The weather service answered with an error (code '
-          '${response.statusCode}) for the $what. Try again in a moment.');
+        'The weather service answered with an error (code '
+        '${response.statusCode}) for the $what. Try again in a moment.',
+      );
     }
     return jsonDecode(response.body);
   }

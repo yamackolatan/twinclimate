@@ -284,11 +284,14 @@ class OpenMeteoWeatherService implements WeatherService {
       );
     }
     if (response.statusCode == 429) {
-      final minutely = response.body.toLowerCase().contains('minutely');
+      final body = response.body.toLowerCase();
       throw WeatherServiceException(
-        minutely
+        body.contains('minutely')
             ? 'The free weather service is busy with requests from this '
                   'connection — wait a minute and try again.'
+            : body.contains('hourly')
+            ? 'The free weather service has had too many requests from this '
+                  'connection in the last hour. Try again later.'
             : 'The free weather service has had too many requests from this '
                   'internet connection today. Try again later.',
         retryable: false,

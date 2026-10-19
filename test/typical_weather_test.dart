@@ -155,6 +155,14 @@ void main() {
       }
     });
 
+    test('repeating a far-ahead search downloads nothing new', () async {
+      final weather = FakeMatchWeather();
+      final req = request(MatchMode.specificDate, DateTime(2027, 7, 1));
+      await MatchService(weather, clock: () => now).run(req);
+      await MatchService(weather, clock: () => now).run(req);
+      expect(weather.manyHistoryCalls, hasLength(10));
+    });
+
     test('a period reaching past the forecast uses its middle day', () async {
       final result = await MatchService(FakeMatchWeather(), clock: () => now)
           .run(request(MatchMode.period, now,

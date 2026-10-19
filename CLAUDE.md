@@ -161,7 +161,10 @@ with reasons. Works in web preview.
   and "Choose dates" periods too (periods capped at 31 days; beyond the
   forecast a period is ranked on its middle day ±5 days). Race Matching
   fetches history for all 43 spots in one request per year, sequentially
-  (per-minute limit).
+  (per-minute limit). Each 43-spot request is ~650 KB / 1–2 s, but counts
+  as ~43 calls against Open-Meteo's free hourly limit (~5,000), so results
+  are cached per visit (date + spots) — changing sport, weights or hours
+  re-ranks without downloading again.
 - Code: `lib/logic/typical_weather.dart`, `lib/services/
   typical_weather_service.dart`; `tool/check_typical.dart` checks it on
   real data.

@@ -119,6 +119,27 @@ class TypicalWeatherService {
     DateTime date, {
     void Function(int done, int total)? onProgress,
   }) async {
+    final key =
+        '${dayOnly(date).toIso8601String()}|'
+        '${[for (final p in points) '${p.$1.toStringAsFixed(3)},${p.$2.toStringAsFixed(3)}'].join(';')}';
+    final cached = _spotCache[key];
+    if (cached != null) return cached;
+    final result = await _forSpots(points, date, onProgress: onProgress);
+    _spotCache[key] = result;
+    if (_spotCache.length > 6) _spotCache.remove(_spotCache.keys.first);
+    return result;
+  }
+
+  /// History is ~6 MB per far-ahead search and counts heavily against the
+  /// free service's hourly limit, so results are kept for the visit:
+  /// changing sport, weights or training hours doesn't download again.
+  static final Map<String, (List<TypicalSpot>, List<int>)> _spotCache = {};
+
+  Future<(List<TypicalSpot>, List<int>)> _forSpots(
+    List<(double, double)> points,
+    DateTime date, {
+    void Function(int done, int total)? onProgress,
+  }) async {
     final day = dayOnly(date);
     final years = historyYears(
       month: day.month,

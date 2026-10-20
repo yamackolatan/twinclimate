@@ -95,8 +95,12 @@ void main() {
     );
     await tester.tap(find.text('Too warm'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
     expect(find.text('Where did you feel too warm?'), findsOneWidget);
     await tester.tap(find.text('Torso'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
 
     // Checklist wasn't ticked, so the optional check appears.
@@ -149,7 +153,11 @@ void main() {
 
     await tester.tap(find.text('Too warm'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Torso'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Did you wear that?'), findsNothing);
     expect(
@@ -221,10 +229,80 @@ void main() {
     expect(
       find.textContaining(
         'It actually felt like 17° (the forecast said '
-        '12°). Great',
+        '12°).\nGreat',
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('several answers: warm torso and legs, cold hands',
+      (tester) async {
+    final store = await freshStore();
+    await store.recordSession(finishedRun('multi'));
+    await pumpHome(tester, store);
+
+    // Both feelings can be on at once.
+    await tester.tap(find.text('Too warm'));
+    await tester.pump();
+    await tester.tap(find.text('Too cold'));
+    await tester.pump();
+    expect(find.text('Both: some parts too cold, others too warm.'),
+        findsOneWidget);
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('Where did you feel too warm?'), findsOneWidget);
+    expect(find.text('Where did you feel too cold?'), findsOneWidget);
+
+    FilterChip chip(String label, int row) => tester.widget<FilterChip>(
+        find.widgetWithText(FilterChip, label).at(row));
+    FilledButton done() =>
+        tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Done'));
+
+    // Done waits until each row has an answer.
+    expect(done().onPressed, isNull);
+    await tester.tap(find.widgetWithText(FilterChip, 'Torso').at(0));
+    await tester.tap(find.widgetWithText(FilterChip, 'Legs').at(0));
+    await tester.pump();
+    expect(done().onPressed, isNull);
+    await tester.tap(find.widgetWithText(FilterChip, 'Hands').at(1));
+    await tester.pump();
+    expect(done().onPressed, isNotNull);
+
+    // A part can't be both too warm and too cold.
+    await tester.tap(find.widgetWithText(FilterChip, 'Torso').at(1));
+    await tester.pump();
+    expect(chip('Torso', 0).selected, isFalse);
+    expect(chip('Torso', 1).selected, isTrue);
+    await tester.tap(find.widgetWithText(FilterChip, 'Torso').at(0));
+    await tester.pump();
+    expect(chip('Torso', 0).selected, isTrue);
+    expect(chip('Torso', 1).selected, isFalse);
+
+    // "Everywhere" replaces specific parts in its row.
+    await tester.tap(find.widgetWithText(FilterChip, 'Everywhere').at(1));
+    await tester.pump();
+    expect(chip('Hands', 1).selected, isFalse);
+    await tester.tap(find.widgetWithText(FilterChip, 'Hands').at(1));
+    await tester.pump();
+    expect(chip('Everywhere', 1).selected, isFalse);
+
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    // Several parts: one general question instead of one per item.
+    expect(find.text('Did you wear the kit we suggested?'), findsOneWidget);
+    await tester.tap(find.text('Yes'));
+    await tester.pumpAndSettle();
+
+    final answers = {
+      for (final e in store.feedback) (e.feeling, e.part),
+    };
+    expect(answers, {
+      (Feeling.tooWarm, BodyPart.torso),
+      (Feeling.tooWarm, BodyPart.legs),
+      (Feeling.tooCold, BodyPart.hands),
+    });
+    expect(find.textContaining('Noted. One more report like this'),
+        findsOneWidget);
   });
 
   testWidgets('no card before the session has finished', (tester) async {

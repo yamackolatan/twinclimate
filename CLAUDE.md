@@ -291,6 +291,13 @@ kit shows a lighter torso item with a personalized reason.
   two matching reports = one step = one kit range lighter/warmer; "just
   right" cancels one report; max ±2 steps; "Everywhere" counts for all
   parts; separate profiles per sport.
+- **Multiple answers (owner request, Oct 2026):** "Too cold" and "Too
+  warm" can both be picked (→ Next), and several body parts per feeling
+  (→ Done; each row needs ≥1; "Everywhere" excludes specific parts; a part
+  can't be both warm and cold). "Just right" stays a single tap. Each
+  feeling + part is stored as its own answer; "Did you wear that?" is asked
+  once — naming the item only when a single part was picked — and skipped
+  when the checklist shows every picked part's suggestion was packed.
 - **Weather anchor:** the session's actual recorded "feels like" (forecast
   API, past days), falling back to the forecast shown; the message says
   when the two differed by 3 °C or more.

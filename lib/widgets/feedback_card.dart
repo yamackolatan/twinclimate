@@ -13,6 +13,10 @@ enum _Step { feeling, where, worn, saving, done }
 /// The post-session question on the home screen (F4): how did it feel →
 /// optional where → (only on uncomfortable days, and only if the packing
 /// checklist doesn't already tell us) did you wear what we suggested?
+///
+/// Multiple answers are allowed (owner request, Oct 2026): "too warm" and
+/// "too cold" together (e.g. warm torso, cold hands) and several body parts
+/// for each. Each feeling + body part is stored as its own answer.
 class FeedbackCard extends StatefulWidget {
   const FeedbackCard({
     super.key,
@@ -35,9 +39,24 @@ class FeedbackCard extends StatefulWidget {
 
 class _FeedbackCardState extends State<FeedbackCard> {
   _Step _step = _Step.feeling;
-  Feeling? _feeling;
-  BodyPart? _part;
+
+  /// Chosen discomforts: too cold and/or too warm.
+  final Set<Feeling> _feelings = {};
+
+  /// Body parts per chosen feeling; `null` in the set means "Everywhere".
+  final Map<Feeling, Set<BodyPart?>> _parts = {
+    Feeling.tooCold: {},
+    Feeling.tooWarm: {},
+  };
   String _message = '';
+
+  /// Every (feeling, body part) answer, in a stable order.
+  List<(Feeling, BodyPart?)> get _answers => [
+    for (final f in [Feeling.tooWarm, Feeling.tooCold])
+      if (_feelings.contains(f))
+        for (final p in [...BodyPart.values, null])
+          if (_parts[f]!.contains(p)) (f, p),
+  ];
 
   SessionRecord get r => widget.record;
 
@@ -47,19 +66,44 @@ class _FeedbackCardState extends State<FeedbackCard> {
     Sport.swim => 'swim',
   };
 
-  void _pickFeeling(Feeling feeling) {
-    _feeling = feeling;
-    if (feeling == Feeling.justRight) {
-      _save(Worn.unknown);
-    } else {
-      setState(() => _step = _Step.where);
-    }
+  void _toggleFeeling(Feeling feeling) => setState(() {
+    _feelings.contains(feeling)
+        ? _feelings.remove(feeling)
+        : _feelings.add(feeling);
+  });
+
+  void _justRight() {
+    _feelings
+      ..clear()
+      ..add(Feeling.justRight);
+    _save(Worn.unknown);
   }
 
-  void _pickPart(BodyPart? part) {
-    _part = part;
-    if (r.packedSuggestionFor(part)) {
-      // The packing checklist already says they wore our suggestion.
+  /// "Everywhere" and specific parts exclude each other, and a body part
+  /// can't be both too warm and too cold.
+  void _togglePart(Feeling feeling, BodyPart? part) => setState(() {
+    final set = _parts[feeling]!;
+    if (set.contains(part)) {
+      set.remove(part);
+      return;
+    }
+    if (part == null) {
+      set.clear();
+    } else {
+      set.remove(null);
+      for (final other in _parts.entries) {
+        if (other.key != feeling) other.value.remove(part);
+      }
+    }
+    set.add(part);
+  });
+
+  bool get _whereComplete =>
+      _feelings.every((f) => _parts[f]!.isNotEmpty) && _feelings.isNotEmpty;
+
+  void _finishWhere() {
+    // The packing checklist already shows the suggestions were packed.
+    if (_answers.every((a) => r.packedSuggestionFor(a.$2))) {
       _save(Worn.asSuggested);
     } else {
       setState(() => _step = _Step.worn);
@@ -69,18 +113,27 @@ class _FeedbackCardState extends State<FeedbackCard> {
   Future<void> _save(Worn worn) async {
     setState(() => _step = _Step.saving);
     final (feelsC, measured) = await _recordedFeelsLike();
-    final entry = FeedbackEntry(
-      id: '${r.id}#${widget.clock().microsecondsSinceEpoch}',
-      sport: r.sport,
-      date: r.start,
-      feelsC: feelsC,
-      measured: measured,
-      feeling: _feeling!,
-      part: _part,
-      worn: worn,
-    );
+    final stamp = widget.clock().microsecondsSinceEpoch;
+    final answers = _feelings.contains(Feeling.justRight)
+        ? [(Feeling.justRight, null)]
+        : _answers;
+    final entries = [
+      for (var i = 0; i < answers.length; i++)
+        FeedbackEntry(
+          id: '${r.id}#$stamp#$i',
+          sport: r.sport,
+          date: r.start,
+          feelsC: feelsC,
+          measured: measured,
+          feeling: answers[i].$1,
+          part: answers[i].$2,
+          worn: worn,
+        ),
+    ];
     final before = widget.store.comfortProfile;
-    await widget.store.addFeedback(entry);
+    for (final entry in entries) {
+      await widget.store.addFeedback(entry);
+    }
     await widget.store.updateSession(
       r.id,
       (s) => s.copyWith(status: SessionStatus.answered),
@@ -88,11 +141,14 @@ class _FeedbackCardState extends State<FeedbackCard> {
     final after = widget.store.comfortProfile;
     if (!mounted) return;
     final differs = measured && (feelsC - r.forecastFeelsC).abs() >= 3;
+    final learned = <String>{
+      for (final entry in entries) learnedMessage(before, after, entry),
+    }.join('\n');
     setState(() {
       _message =
           '${differs ? 'It actually felt like ${feelsC.round()}° '
-                    '(the forecast said ${r.forecastFeelsC.round()}°). ' : ''}'
-          '${learnedMessage(before, after, entry)}';
+                    '(the forecast said ${r.forecastFeelsC.round()}°).\n' : ''}'
+          '$learned';
       _step = _Step.done;
     });
   }
@@ -182,19 +238,38 @@ class _FeedbackCardState extends State<FeedbackCard> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        _choice(Icons.ac_unit, 'Too cold', () => _pickFeeling(Feeling.tooCold)),
-        _choice(
-          Icons.check,
-          'Just right',
-          () => _pickFeeling(Feeling.justRight),
+        _choice(Icons.thumb_up_alt_outlined, 'Just right', _justRight),
+        _toggle(
+          Icons.ac_unit,
+          'Too cold',
+          _feelings.contains(Feeling.tooCold),
+          () => _toggleFeeling(Feeling.tooCold),
         ),
-        _choice(
+        _toggle(
           Icons.wb_sunny_outlined,
           'Too warm',
-          () => _pickFeeling(Feeling.tooWarm),
+          _feelings.contains(Feeling.tooWarm),
+          () => _toggleFeeling(Feeling.tooWarm),
         ),
       ],
     ),
+    if (_feelings.isNotEmpty) ...[
+      const SizedBox(height: 8),
+      Text(
+        _feelings.length == 2
+            ? 'Both: some parts too cold, others too warm.'
+            : 'You can pick both if some parts were too cold and others '
+                  'too warm.',
+        style: theme.textTheme.bodySmall,
+      ),
+      Align(
+        alignment: Alignment.centerRight,
+        child: FilledButton(
+          onPressed: () => setState(() => _step = _Step.where),
+          child: const Text('Next'),
+        ),
+      ),
+    ],
     const SizedBox(height: 4),
     Wrap(
       children: [
@@ -211,26 +286,46 @@ class _FeedbackCardState extends State<FeedbackCard> {
   ];
 
   List<Widget> _whereStep(ThemeData theme) => [
-    Text(
-      _feeling == Feeling.tooWarm
-          ? 'Where did you feel too warm?'
-          : 'Where did you feel too cold?',
-      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-    ),
-    const SizedBox(height: 12),
-    Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final part in BodyPart.values)
-          _choice(null, part.label, () => _pickPart(part)),
-        _choice(null, 'Everywhere', () => _pickPart(null)),
+    for (final feeling in [Feeling.tooWarm, Feeling.tooCold])
+      if (_feelings.contains(feeling)) ...[
+        Text(
+          feeling == Feeling.tooWarm
+              ? 'Where did you feel too warm?'
+              : 'Where did you feel too cold?',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final part in [...BodyPart.values, null])
+              _toggle(
+                null,
+                part?.label ?? 'Everywhere',
+                _parts[feeling]!.contains(part),
+                () => _togglePart(feeling, part),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
       ],
+    Text('Pick one or more.', style: theme.textTheme.bodySmall),
+    Align(
+      alignment: Alignment.centerRight,
+      child: FilledButton(
+        onPressed: _whereComplete ? _finishWhere : null,
+        child: const Text('Done'),
+      ),
     ),
   ];
 
   List<Widget> _wornStep(ThemeData theme) {
-    final part = _part;
+    // One specific body part: name the item. Several: ask once for all.
+    final answers = _answers;
+    final part = answers.length == 1 ? answers.single.$2 : null;
     final suggested = part == null ? null : r.suggested[part];
     final question = part == null
         ? 'Did you wear the kit we suggested?'
@@ -284,6 +379,31 @@ class _FeedbackCardState extends State<FeedbackCard> {
       child: TextButton(onPressed: widget.onDone, child: const Text('Done')),
     ),
   ];
+
+  /// A selectable answer (several can be on at once).
+  Widget _toggle(
+    IconData? icon,
+    String label,
+    bool selected,
+    VoidCallback onTap,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    return FilterChip(
+      avatar: icon == null || selected ? null : Icon(icon, size: 18),
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onTap(),
+      // Selected answers must stand out against the card's own colour.
+      selectedColor: scheme.primary,
+      checkmarkColor: scheme.onPrimary,
+      labelStyle: TextStyle(
+        color: selected ? scheme.onPrimary : scheme.onSurface,
+        fontWeight: selected ? FontWeight.w600 : null,
+      ),
+      backgroundColor: scheme.surface,
+      side: BorderSide(color: selected ? scheme.primary : scheme.outline),
+    );
+  }
 
   Widget _choice(IconData? icon, String label, VoidCallback onTap) =>
       icon == null

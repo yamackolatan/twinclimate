@@ -416,7 +416,13 @@ extension on _MatchResultPageState {
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: [
           for (final pick in picks)
-            ProductTile(product: pick.product, store: store, why: pick.why),
+            ProductTile(
+              product: pick.product,
+              store: store,
+              why: pick.owned
+                  ? '${pick.why} · You have one — another model to consider'
+                  : pick.why,
+            ),
           Text(
             'For each need we pick the best-rated product on decathlon.nl '
             '(customer ratings as listed in $catalogueDate; some products '

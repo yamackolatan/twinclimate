@@ -41,7 +41,8 @@ the same codebase.
    Settings.
 5. ✅ **Shopping suggestions (demo)** — "Don't have one?" links under kit
    items and a race-day kit of best-rated picks, both opening product pages
-   on decathlon.nl; "My gear" remembers what you own, and a Partner demo
+   on decathlon.nl; "My gear" remembers what you own (its links then show
+   other models), and a Partner demo
    screen shows how suggestions perform. (The earlier packing-reminder idea
    was cancelled.) Demo only — not affiliated with Decathlon.
 

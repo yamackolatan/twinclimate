@@ -10,7 +10,8 @@ const String shopDisclosure =
     'Shop links go to decathlon.nl. Demo — not affiliated with Decathlon.';
 
 /// A bottom sheet with 1–3 decathlon.nl products for one need, plus
-/// "I already have this" so the suggestion never comes back.
+/// "I already have this" (saved in My gear; the link then offers other
+/// models instead of disappearing).
 class ProductSheet extends StatelessWidget {
   const ProductSheet({
     super.key,
@@ -19,6 +20,7 @@ class ProductSheet extends StatelessWidget {
     required this.products,
     required this.types,
     this.store,
+    this.owned = false,
   });
 
   /// e.g. "Light water-resistant jacket".
@@ -32,6 +34,9 @@ class ProductSheet extends StatelessWidget {
   final List<String> types;
   final PrefsStore? store;
 
+  /// The user already has this (shown as "other models").
+  final bool owned;
+
   /// Opens the sheet; returns true when the user said they have it.
   static Future<bool> show(
     BuildContext context, {
@@ -40,11 +45,12 @@ class ProductSheet extends StatelessWidget {
     required List<Product> products,
     required List<String> types,
     PrefsStore? store,
+    bool owned = false,
   }) async {
     for (final type in types) {
       store?.countShop('opened', type);
     }
-    final owned = await showModalBottomSheet<bool>(
+    final saidOwned = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -54,9 +60,10 @@ class ProductSheet extends StatelessWidget {
         products: products.take(3).toList(),
         types: types,
         store: store,
+        owned: owned,
       ),
     );
-    return owned ?? false;
+    return saidOwned ?? false;
   }
 
   @override
@@ -80,7 +87,7 @@ class ProductSheet extends StatelessWidget {
               Text(why, style: muted),
               const SizedBox(height: 12),
               Text(
-                'Options at Decathlon',
+                owned ? 'Other models at Decathlon' : 'Options at Decathlon',
                 style: theme.textTheme.titleSmall?.copyWith(
                   color: theme.colorScheme.primary,
                 ),
@@ -89,17 +96,34 @@ class ProductSheet extends StatelessWidget {
               for (final product in products)
                 ProductTile(product: product, store: store),
               const SizedBox(height: 4),
-              OutlinedButton.icon(
-                onPressed: () async {
-                  await store?.markOwned(types);
-                  for (final type in types) {
-                    await store?.countShop('owned', type);
-                  }
-                  if (context.mounted) Navigator.of(context).pop(true);
-                },
-                icon: const Icon(Icons.check),
-                label: const Text('I already have this'),
-              ),
+              if (owned)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'You have one — saved in My gear',
+                      style: theme.textTheme.labelLarge,
+                    ),
+                  ],
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await store?.markOwned(types);
+                    for (final type in types) {
+                      await store?.countShop('owned', type);
+                    }
+                    if (context.mounted) Navigator.of(context).pop(true);
+                  },
+                  icon: const Icon(Icons.check),
+                  label: const Text('I already have this'),
+                ),
               const SizedBox(height: 12),
               Text(
                 'Prices and ratings as listed on decathlon.nl in '

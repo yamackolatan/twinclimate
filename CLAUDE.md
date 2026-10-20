@@ -331,10 +331,16 @@ Replaced by the two shopping features (F5a, F5b) below.
   product photos.
 - **Not pushy rules:** at most 3 shop links per kit list (rain/wind gear
   first, then torso, hands, head, legs, feet; optional items last); a
-  small text link, never a banner; never for gear the user has ("I already
-  have this", or ticked while packing → saved in "My gear"); one switch
+  small text link, never a banner; one switch
   turns all suggestions off (menu → My gear & shopping); the race-day kit
   is folded away until opened.
+- **Owned gear keeps its link (owner request, Oct 2026):** "I already have
+  this" (or ticking an item while packing) saves it in "My gear", but the
+  link stays — people may want to see other models. It then reads "You
+  have one — see other models at Decathlon"; the sheet says "Other models
+  at Decathlon" and "You have one — saved in My gear". Owning doesn't
+  change which items get links. Race-day picks the user owns stay too,
+  with "You have one — another model to consider".
 
 ### F5a — Kit shopping (Quick Session)
 - Under kit items the user may not own: "Don't have one? See options at

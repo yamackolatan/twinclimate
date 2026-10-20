@@ -160,7 +160,7 @@ void main() {
     ];
 
     test('at most 3, rain gear first, then torso, hands', () {
-      final offered = itemsToOffer(kit, ownedTypes: {}, catalogue: catalogue);
+      final offered = itemsToOffer(kit, catalogue: catalogue);
       expect(offered.map((i) => i.name), [
         'Light water-resistant jacket',
         'Short-sleeve tee',
@@ -168,17 +168,17 @@ void main() {
       ]);
     });
 
-    test('never for gear the user has', () {
-      final offered = itemsToOffer(
-        kit,
-        ownedTypes: {'run_jacket_rain', 'run_gloves_thin'},
-        catalogue: catalogue,
+    test('owned gear keeps its link (other models), marked as owned', () {
+      final offered = itemsToOffer(kit, catalogue: catalogue);
+      expect(offered.map((i) => i.name), contains('Thin gloves'));
+      final owned = {'run_jacket_rain', 'run_gloves_thin'};
+      expect(
+        [
+          for (final i in offered)
+            if (ownsItem(i, owned)) i.name,
+        ],
+        ['Light water-resistant jacket', 'Thin gloves'],
       );
-      expect(offered.map((i) => i.name), [
-        'Short-sleeve tee',
-        'Cap with a brim',
-        'Running tights',
-      ]);
     });
   });
 
@@ -219,86 +219,100 @@ void main() {
       );
     });
 
-    test('skips what the user owns', () {
+    test('owned types stay, marked as owned', () {
       final picks = raceKit(
         race: _race(triathlonPresets.last.legs),
         conditions: _stats(temp: 17),
         sport: Sport.run,
         ownedTypes: {'swim_wetsuit'},
       );
-      expect(
-        picks.map((p) => p.product.category),
-        isNot(contains('swim_wetsuit')),
+      final wetsuit = picks.firstWhere(
+        (p) => p.product.category == 'swim_wetsuit',
       );
+      expect(wetsuit.owned, isTrue);
+      expect(picks.where((p) => p.owned).length, 1);
     });
   });
 
-  testWidgets('kit list offers Decathlon options; "I have this" hides them', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(1000, 3000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    SharedPreferences.setMockInitialValues({});
-    final store = await PrefsStore.load();
-    final plan = SessionPlan(
-      sport: Sport.run,
-      place: presetPlaces.first,
-      start: DateTime.now().add(const Duration(days: 1)),
-      distanceKm: 10,
-    );
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SessionResultPage(
-          plan: plan,
-          weather: FakeWeatherService(),
-          store: store,
+  testWidgets(
+    'kit list offers Decathlon options; "I have this" keeps the link',
+    (tester) async {
+      tester.view.physicalSize = const Size(1000, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({});
+      final store = await PrefsStore.load();
+      final plan = SessionPlan(
+        sport: Sport.run,
+        place: presetPlaces.first,
+        start: DateTime.now().add(const Duration(days: 1)),
+        distanceKm: 10,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SessionResultPage(
+            plan: plan,
+            weather: FakeWeatherService(),
+            store: store,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    final links = find.text("Don't have one? See options at Decathlon");
-    expect(links, findsNWidgets(maxShopLinks));
-    expect(
-      store.shopStats.keys.where((k) => k.startsWith('shown:')),
-      isNotEmpty,
-    );
+      final links = find.text("Don't have one? See options at Decathlon");
+      expect(links, findsNWidgets(maxShopLinks));
+      expect(
+        store.shopStats.keys.where((k) => k.startsWith('shown:')),
+        isNotEmpty,
+      );
 
-    // Links appear in body-part order (head first).
-    await tester.tap(links.first);
-    await tester.pumpAndSettle();
-    expect(find.text('Options at Decathlon'), findsOneWidget);
-    expect(find.text('View at decathlon.nl'), findsWidgets);
-    expect(
-      store.shopStats.keys.where((k) => k.startsWith('opened:')),
-      isNotEmpty,
-      reason: '${store.shopStats}',
-    );
+      // Links appear in body-part order (head first).
+      await tester.tap(links.first);
+      await tester.pumpAndSettle();
+      expect(find.text('Options at Decathlon'), findsOneWidget);
+      expect(find.text('View at decathlon.nl'), findsWidgets);
+      expect(
+        store.shopStats.keys.where((k) => k.startsWith('opened:')),
+        isNotEmpty,
+        reason: '${store.shopStats}',
+      );
 
-    await tester.tap(find.text('I already have this'));
-    await tester.pumpAndSettle();
-    final opened = store.shopStats.keys
-        .where((k) => k.startsWith('opened:'))
-        .map((k) => k.substring('opened:'.length));
-    expect(store.ownedTypes, containsAll(opened));
-    // Another item takes its place, still at most three links.
-    expect(links.evaluate().length, lessThanOrEqualTo(maxShopLinks));
+      await tester.tap(find.text('I already have this'));
+      await tester.pumpAndSettle();
+      final opened = store.shopStats.keys
+          .where((k) => k.startsWith('opened:'))
+          .map((k) => k.substring('opened:'.length));
+      expect(store.ownedTypes, containsAll(opened));
+      // The link stays, now offering other models.
+      expect(links, findsNWidgets(maxShopLinks - 1));
+      final otherModels = find.text(
+        'You have one — see other models at Decathlon',
+      );
+      expect(otherModels, findsOneWidget);
+      await tester.tap(otherModels);
+      await tester.pumpAndSettle();
+      expect(find.text('Other models at Decathlon'), findsOneWidget);
+      expect(find.text('You have one — saved in My gear'), findsOneWidget);
+      expect(find.text('I already have this'), findsNothing);
+      await tester.tapAt(const Offset(500, 20));
+      await tester.pumpAndSettle();
 
-    // Switched off: no links at all.
-    await store.setShopSuggestionsOn(false);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SessionResultPage(
-          key: const ValueKey('again'),
-          plan: plan,
-          weather: FakeWeatherService(),
-          store: store,
+      // Switched off: no links at all.
+      await store.setShopSuggestionsOn(false);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SessionResultPage(
+            key: const ValueKey('again'),
+            plan: plan,
+            weather: FakeWeatherService(),
+            store: store,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(links, findsNothing);
-  });
+      );
+      await tester.pumpAndSettle();
+      expect(links, findsNothing);
+      expect(otherModels, findsNothing);
+    },
+  );
 }

@@ -100,7 +100,7 @@ class _PartnerDemoPageState extends State<PartnerDemoPage> {
                     '• Products are matched to the kit the weather calls for '
                     '(type and function), with the reason shown.\n'
                     '• At most 3 links per kit list, rain/wind gear first; '
-                    'never for gear the user already has.\n'
+                    'for gear the user has, the link offers other models.\n'
                     '• Race-day picks are the best-rated sellers for the '
                     'race\'s typical weather.\n'
                     '• Demo catalogue: ${decathlonCatalogue.length} '

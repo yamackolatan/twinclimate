@@ -131,7 +131,8 @@ class _SessionResultPageState extends State<SessionResultPage> {
       _sessionId,
       (r) => r.copyWith(packed: packed, allPacked: allPacked),
     );
-    // Packing an item means owning it: no shop link for it again.
+    // Packing an item means owning it (its shop link then offers other
+    // models).
     final types = [for (final name in packed) ...?itemProductTypes[name]];
     if (store != null && types.any((t) => !store.ownedTypes.contains(t))) {
       store.markOwned(types).then((_) {
@@ -146,7 +147,7 @@ class _SessionResultPageState extends State<SessionResultPage> {
   Set<GearItem> _shopItems(List<GearItem> kit) {
     final store = widget.store;
     if (store == null || !store.shopSuggestionsOn) return const {};
-    final items = itemsToOffer(kit, ownedTypes: store.ownedTypes);
+    final items = itemsToOffer(kit);
     for (final item in items) {
       for (final type in itemProductTypes[item.name]!) {
         if (_countedShown.add(type)) store.countShop('shown', type);
@@ -163,6 +164,7 @@ class _SessionResultPageState extends State<SessionResultPage> {
       products: productsForItem(item),
       types: itemProductTypes[item.name] ?? const [],
       store: widget.store,
+      owned: ownsItem(item, widget.store?.ownedTypes ?? const {}),
     );
     if (owned && mounted) setState(() {});
   }
@@ -323,6 +325,10 @@ class _SessionResultPageState extends State<SessionResultPage> {
                   initialPacked: _savedPacked,
                   onPackedChanged: _onPacked,
                   shopItems: shopItems,
+                  ownedShopItems: {
+                    for (final item in shopItems)
+                      if (ownsItem(item, widget.store!.ownedTypes)) item,
+                  },
                   onShop: _openShop,
                 ),
                 if (shopItems.isNotEmpty) ...[

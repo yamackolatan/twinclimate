@@ -5,7 +5,7 @@ import '../services/prefs_store.dart';
 import '../widgets/product_sheet.dart';
 
 /// Gear the user already has (from "I already have this" or packing
-/// ticks) — no shop suggestions appear for these — plus the switch that
+/// ticks; their shop links then show other models) — plus the switch that
 /// turns shop suggestions off entirely.
 class MyGearPage extends StatefulWidget {
   const MyGearPage({super.key, required this.store});
@@ -51,8 +51,8 @@ class _MyGearPageState extends State<MyGearPage> {
           Text('Gear you have', style: theme.textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(
-            'We never suggest buying these. Items are added when you tap '
-            '"I already have this" or tick them while packing.',
+            'Added when you tap "I already have this" or tick an item while '
+            'packing. Their shop links stay, showing other models.',
             style: muted,
           ),
           const SizedBox(height: 8),

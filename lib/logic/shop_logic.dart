@@ -152,14 +152,11 @@ List<Product> productsForItem(GearItem item, {List<Product>? catalogue}) {
   ];
 }
 
-/// Which kit items get a "Don't have one?" link: up to [maxShopLinks],
-/// rain/wind items first, then the main garments; never items whose
-/// product types the user already owns, and never items without products.
-Set<GearItem> itemsToOffer(
-  List<GearItem> kit, {
-  required Set<String> ownedTypes,
-  List<Product>? catalogue,
-}) {
+/// Which kit items get a shop link: up to [maxShopLinks], rain/wind items
+/// first, then the main garments; never items without products. Owning
+/// an item does not remove its link (owner, Oct 2026: people may still
+/// want to look at other models) — see [ownsItem] for the wording.
+Set<GearItem> itemsToOffer(List<GearItem> kit, {List<Product>? catalogue}) {
   int priority(GearItem item) {
     if (item.trigger != GearTrigger.none) return 0;
     return switch (item.part) {
@@ -175,23 +172,33 @@ Set<GearItem> itemsToOffer(
   final candidates = [
     for (final item in kit)
       if ((itemProductTypes[item.name] ?? const <String>[]).isNotEmpty &&
-          !itemProductTypes[item.name]!.any(ownedTypes.contains) &&
           productsForItem(item, catalogue: catalogue).isNotEmpty)
         item,
   ]..sort((a, b) => priority(a).compareTo(priority(b)));
   return candidates.take(maxShopLinks).toSet();
 }
 
+/// Whether the user said they have this kit item (all its product types
+/// are in "My gear").
+bool ownsItem(GearItem item, Set<String> ownedTypes) {
+  final types = itemProductTypes[item.name] ?? const <String>[];
+  return types.isNotEmpty && types.every(ownedTypes.contains);
+}
+
 /// A race-kit suggestion: a top-rated product and why it suits the race.
 class RaceKitPick {
-  const RaceKitPick(this.product, this.why);
+  const RaceKitPick(this.product, this.why, {this.owned = false});
   final Product product;
   final String why;
+
+  /// The user already has this type of product (still shown, as another
+  /// model to consider).
+  final bool owned;
 }
 
 /// Up to [count] top-rated Decathlon best sellers suited to the race's
 /// typical conditions (owner feature 2). One product per type; types the
-/// user owns are skipped.
+/// user owns are still shown, marked [RaceKitPick.owned].
 List<RaceKitPick> raceKit({
   required Race race,
   required ConditionStats conditions,
@@ -250,12 +257,12 @@ List<RaceKitPick> raceKit({
   final used = <String>{};
   for (final (type, why) in wants) {
     if (picks.length >= count) break;
-    if (ownedTypes.contains(type) || !used.add(type)) continue;
+    if (!used.add(type)) continue;
     final best = productsFor(type, catalogue: catalogue);
     // Rated best sellers come first; an unrated product is only picked
     // when its type has no rated one.
     if (best.isEmpty) continue;
-    picks.add(RaceKitPick(best.first, why));
+    picks.add(RaceKitPick(best.first, why, owned: ownedTypes.contains(type)));
   }
   return picks;
 }

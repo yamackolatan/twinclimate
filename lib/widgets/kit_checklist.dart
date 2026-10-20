@@ -12,6 +12,7 @@ class KitChecklist extends StatefulWidget {
     this.initialPacked = const {},
     this.onPackedChanged,
     this.shopItems = const {},
+    this.ownedShopItems = const {},
     this.onShop,
   });
 
@@ -26,6 +27,10 @@ class KitChecklist extends StatefulWidget {
 
   /// Items that get a quiet "Don't have one?" shop link (at most a few).
   final Set<GearItem> shopItems;
+
+  /// Shop items the user already has: the link stays, worded as "other
+  /// models".
+  final Set<GearItem> ownedShopItems;
   final void Function(GearItem item)? onShop;
 
   @override
@@ -208,8 +213,7 @@ class _KitChecklistState extends State<KitChecklist> {
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
-                    if (!isPacked &&
-                        widget.onShop != null &&
+                    if (widget.onShop != null &&
                         widget.shopItems.contains(item))
                       _shopLink(context, item),
                   ],
@@ -238,7 +242,9 @@ class _KitChecklistState extends State<KitChecklist> {
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
-                  "Don't have one? See options at Decathlon",
+                  widget.ownedShopItems.contains(item)
+                      ? 'You have one — see other models at Decathlon'
+                      : "Don't have one? See options at Decathlon",
                   style: Theme.of(
                     context,
                   ).textTheme.labelMedium?.copyWith(color: scheme.primary),

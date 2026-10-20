@@ -39,7 +39,11 @@ the same codebase.
    feel?") teaches the app whether you run warm or cold, per body part and
    temperature; kit suggestions adapt and say why. Optional sliders in
    Settings.
-5. **Packing reminder** — the kit checklist pings you the evening before.
+5. ✅ **Shopping suggestions (demo)** — "Don't have one?" links under kit
+   items and a race-day kit of best-rated picks, both opening product pages
+   on decathlon.nl; "My gear" remembers what you own, and a Partner demo
+   screen shows how suggestions perform. (The earlier packing-reminder idea
+   was cancelled.) Demo only — not affiliated with Decathlon.
 
 ## See it in your browser (GitHub Pages)
 

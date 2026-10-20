@@ -27,41 +27,50 @@ const target = ConditionStats(
 );
 
 const runWeights = MatchWeights(
-    temperature: 0.35, humidity: 0.30, wind: 0.20, rain: 0.15);
+  temperature: 0.35,
+  humidity: 0.30,
+  wind: 0.20,
+  rain: 0.15,
+);
 
-HourWeather hour(DateTime time,
-        {double temp = 18,
-        double humidity = 75,
-        double wind = 15,
-        double rainProb = 30}) =>
-    HourWeather(
-      time: time,
-      temperatureC: temp,
-      apparentC: temp,
-      humidityPercent: humidity,
-      precipProbabilityPercent: rainProb,
-      precipitationMm: 0,
-      windKmh: wind,
-      gustKmh: wind * 2,
-      weatherCode: 1,
-      isDay: true,
-    );
+HourWeather hour(
+  DateTime time, {
+  double temp = 18,
+  double humidity = 75,
+  double wind = 15,
+  double rainProb = 30,
+}) => HourWeather(
+  time: time,
+  temperatureC: temp,
+  apparentC: temp,
+  humidityPercent: humidity,
+  precipProbabilityPercent: rainProb,
+  precipitationMm: 0,
+  windKmh: wind,
+  gustKmh: wind * 2,
+  weatherCode: 1,
+  isDay: true,
+);
 
 /// A day where temperature is [peak] at 09:00 and drops 2 °C per hour away
 /// from it; everything else is race-typical.
 Map<DateTime, HourWeather> peakedDay(DateTime day, {double peak = 18}) => {
-      for (var h = 0; h < 24; h++)
-        DateTime(day.year, day.month, day.day, h): hour(
-            DateTime(day.year, day.month, day.day, h),
-            temp: peak - 2.0 * (h - 9).abs()),
-    };
+  for (var h = 0; h < 24; h++)
+    DateTime(day.year, day.month, day.day, h): hour(
+      DateTime(day.year, day.month, day.day, h),
+      temp: peak - 2.0 * (h - 9).abs(),
+    ),
+};
 
 double haversineKm(double lat1, double lon1, double lat2, double lon2) {
   double rad(double d) => d * math.pi / 180;
   final dLat = rad(lat2 - lat1);
   final dLon = rad(lon2 - lon1);
-  final a = math.pow(math.sin(dLat / 2), 2) +
-      math.cos(rad(lat1)) * math.cos(rad(lat2)) * math.pow(math.sin(dLon / 2), 2);
+  final a =
+      math.pow(math.sin(dLat / 2), 2) +
+      math.cos(rad(lat1)) *
+          math.cos(rad(lat2)) *
+          math.pow(math.sin(dLon / 2), 2);
   return 6371 * 2 * math.asin(math.sqrt(a));
 }
 
@@ -71,11 +80,12 @@ void main() {
       final spots = generateSpots(41.18, 28.99, 150);
       expect(spots, hasLength(43));
       expect(spots.first.isHome, isTrue);
-      expect(spots.map((s) => s.distanceKm).toSet(),
-          {0, 37.5, 75, 112.5, 150});
+      expect(spots.map((s) => s.distanceKm).toSet(), {0, 37.5, 75, 112.5, 150});
       for (final s in spots) {
-        expect(haversineKm(41.18, 28.99, s.latitude, s.longitude),
-            closeTo(s.distanceKm, 0.5));
+        expect(
+          haversineKm(41.18, 28.99, s.latitude, s.longitude),
+          closeTo(s.distanceKm, 0.5),
+        );
       }
     });
 
@@ -90,34 +100,53 @@ void main() {
 
     test('readable directions', () {
       const spot = Spot(
-          latitude: 0, longitude: 0, distanceKm: 38.4, bearingDegrees: 315);
+        latitude: 0,
+        longitude: 0,
+        distanceKm: 38.4,
+        bearingDegrees: 315,
+      );
       expect(spotDirection(spot), '38 km north-west');
       expect(spotTitle(spot), '38 km north-west');
       expect(spotTitle(spot.copyWith(name: 'Kilyos')), 'Kilyos');
-      expect(spotDetails(spot.copyWith(name: 'Kilyos', elevationM: 12.3)),
-          '38 km north-west · 12 m altitude');
+      expect(
+        spotDetails(spot.copyWith(name: 'Kilyos', elevationM: 12.3)),
+        '38 km north-west · 12 m altitude',
+      );
     });
   });
 
   group('similarity score', () {
     test('race-typical conditions score 100 %', () {
       const c = SessionConditions(
-          temperature: 18, humidity: 75, wind: 15, rainLikelihood: 0.3);
+        temperature: 18,
+        humidity: 75,
+        wind: 15,
+        rainLikelihood: 0.3,
+      );
       expect(similarityScore(c, target, runWeights), closeTo(100, 1e-9));
     });
 
     test('one normal spread off on everything scores about 70 %', () {
       const c = SessionConditions(
-          temperature: 20, humidity: 85, wind: 20, rainLikelihood: 0.65);
+        temperature: 20,
+        humidity: 85,
+        wind: 20,
+        rainLikelihood: 0.65,
+      );
       expect(similarityScore(c, target, runWeights), closeTo(70.7, 0.1));
     });
 
     test('farther from race day always scores lower', () {
       double scoreAt(double temp) => similarityScore(
-          SessionConditions(
-              temperature: temp, humidity: 75, wind: 15, rainLikelihood: 0.3),
-          target,
-          runWeights);
+        SessionConditions(
+          temperature: temp,
+          humidity: 75,
+          wind: 15,
+          rainLikelihood: 0.3,
+        ),
+        target,
+        runWeights,
+      );
       expect(scoreAt(19), greaterThan(scoreAt(21)));
       expect(scoreAt(21), greaterThan(scoreAt(26)));
       expect(scoreAt(17), closeTo(scoreAt(19), 1e-9));
@@ -125,28 +154,37 @@ void main() {
 
     test('weights decide what matters: windy day hurts a bike more', () {
       const windy = SessionConditions(
-          temperature: 18, humidity: 75, wind: 30, rainLikelihood: 0.3);
+        temperature: 18,
+        humidity: 75,
+        wind: 30,
+        rainLikelihood: 0.3,
+      );
       expect(
-          similarityScore(windy, target, MatchWeights.forSport(Sport.bike)),
-          lessThan(similarityScore(
-              windy, target, MatchWeights.forSport(Sport.run))));
+        similarityScore(windy, target, MatchWeights.forSport(Sport.bike)),
+        lessThan(
+          similarityScore(windy, target, MatchWeights.forSport(Sport.run)),
+        ),
+      );
     });
 
     test('sport defaults follow the brief and sum to 100 %', () {
       final run = MatchWeights.forSport(Sport.run);
-      expect([run.temperature, run.humidity, run.wind, run.rain],
-          [0.35, 0.30, 0.20, 0.15]);
+      expect(
+        [run.temperature, run.humidity, run.wind, run.rain],
+        [0.35, 0.30, 0.20, 0.15],
+      );
       for (final sport in Sport.values) {
         final w = MatchWeights.forSport(sport).normalised;
         expect(w.temperature + w.humidity + w.wind + w.rain, closeTo(1, 1e-9));
       }
-      expect(MatchWeights.forSport(Sport.bike).wind,
-          greaterThan(MatchWeights.forSport(Sport.bike).temperature));
+      expect(
+        MatchWeights.forSport(Sport.bike).wind,
+        greaterThan(MatchWeights.forSport(Sport.bike).temperature),
+      );
     });
 
     test('all-zero custom weights fall back to equal weights', () {
-      const zero =
-          MatchWeights(temperature: 0, humidity: 0, wind: 0, rain: 0);
+      const zero = MatchWeights(temperature: 0, humidity: 0, wind: 0, rain: 0);
       expect(zero.normalised.temperature, 0.25);
     });
   });
@@ -156,12 +194,18 @@ void main() {
     test('averages the session hours; rain is the highest chance', () {
       final byHour = {
         for (var h = 0; h < 24; h++)
-          DateTime(2026, 10, 24, h): hour(DateTime(2026, 10, 24, h),
-              temp: h.toDouble(), rainProb: h == 9 ? 60 : 10),
+          DateTime(2026, 10, 24, h): hour(
+            DateTime(2026, 10, 24, h),
+            temp: h.toDouble(),
+            rainProb: h == 9 ? 60 : 10,
+          ),
       };
       // 08:00 + 90 min -> 08:00 and 09:00 slots.
       final c = sessionConditions(
-          byHour, day.add(const Duration(hours: 8)), 90)!;
+        byHour,
+        day.add(const Duration(hours: 8)),
+        90,
+      )!;
       expect(c.temperature, 8.5);
       expect(c.rainLikelihood, 0.6);
     });
@@ -183,20 +227,21 @@ void main() {
           ),
       };
       // 15:00 + 90 min finishes 16:30: daylight throughout.
-      expect(sessionConditions(byHour, DateTime(2026, 10, 24, 15), 90),
-          isNotNull);
+      expect(
+        sessionConditions(byHour, DateTime(2026, 10, 24, 15), 90),
+        isNotNull,
+      );
       // 17:00 + 60 min finishes at 18:00, which is dark.
-      expect(sessionConditions(byHour, DateTime(2026, 10, 24, 17), 60),
-          isNull);
+      expect(sessionConditions(byHour, DateTime(2026, 10, 24, 17), 60), isNull);
       // 16:00 + 90 min finishes 17:30, nearest hour 18:00: dark.
-      expect(sessionConditions(byHour, DateTime(2026, 10, 24, 16), 90),
-          isNull);
+      expect(sessionConditions(byHour, DateTime(2026, 10, 24, 16), 90), isNull);
       // 16:00 + 70 min finishes 17:10, nearest hour 17:00: still light.
-      expect(sessionConditions(byHour, DateTime(2026, 10, 24, 16), 70),
-          isNotNull);
+      expect(
+        sessionConditions(byHour, DateTime(2026, 10, 24, 16), 70),
+        isNotNull,
+      );
       // 06:00 starts in the dark.
-      expect(sessionConditions(byHour, DateTime(2026, 10, 24, 6), 60),
-          isNull);
+      expect(sessionConditions(byHour, DateTime(2026, 10, 24, 6), 60), isNull);
     });
 
     test('with "Daylight only" off, dark hours are allowed', () {
@@ -217,8 +262,10 @@ void main() {
       };
       final start = DateTime(2026, 10, 24, 19);
       expect(sessionConditions(dark, start, 60), isNull);
-      expect(sessionConditions(dark, start, 60, requireDaylight: false),
-          isNotNull);
+      expect(
+        sessionConditions(dark, start, 60, requireDaylight: false),
+        isNotNull,
+      );
     });
 
     test('missing forecast hours give no score instead of a fake one', () {
@@ -230,28 +277,32 @@ void main() {
   group('best time and time window', () {
     final day = DateTime(2026, 10, 24);
     const spot = Spot(
-        latitude: 41, longitude: 29, distanceKm: 0, bearingDegrees: 0);
+      latitude: 41,
+      longitude: 29,
+      distanceKm: 0,
+      bearingDegrees: 0,
+    );
 
     // 06:00 earliest start, 19:00 latest finish: hourly starts 06:00-18:00.
     const sixToSeven = TrainingWindow(fromMinutes: 360, untilMinutes: 1140);
 
-    PlaceResult best(Map<DateTime, HourWeather> byHour,
-            {DateTime? notBefore,
-            List<DateTime>? days,
-            TrainingWindow window = sixToSeven}) =>
-        bestForSpot(
-          spot: spot,
-          byHour: byHour,
-          days: days ?? [day],
-          durationMinutes: 60,
-          target: target,
-          weights: runWeights,
-          window: window,
-          notBefore: notBefore,
-        )!;
+    PlaceResult best(
+      Map<DateTime, HourWeather> byHour, {
+      DateTime? notBefore,
+      List<DateTime>? days,
+      TrainingWindow window = sixToSeven,
+    }) => bestForSpot(
+      spot: spot,
+      byHour: byHour,
+      days: days ?? [day],
+      durationMinutes: 60,
+      target: target,
+      weights: runWeights,
+      window: window,
+      notBefore: notBefore,
+    )!;
 
-    test('finds the best start and a window of good neighbouring starts',
-        () {
+    test('finds the best start and a window of good neighbouring starts', () {
       final r = best(peakedDay(day));
       expect(r.best.start, DateTime(2026, 10, 24, 9));
       expect(r.best.score, closeTo(100, 1e-9));
@@ -259,8 +310,10 @@ void main() {
       // 8 points; 07:00 / 11:00 are 4 °C off -> well below.
       expect(r.windowFirstStart, DateTime(2026, 10, 24, 8));
       expect(r.windowLastStart, DateTime(2026, 10, 24, 10));
-      expect(windowText(r),
-          'Start between 08:00 and 10:00 → you\'d train 08:00–11:00');
+      expect(
+        windowText(r),
+        'Start between 08:00 and 10:00 → you\'d train 08:00–11:00',
+      );
       expect(r.dayScores.first.start.hour, 6);
       expect(r.dayScores.last.start.hour, 18);
     });
@@ -274,17 +327,22 @@ void main() {
     });
 
     test('only start times inside the training window are tried', () {
-      final r = best(peakedDay(day),
-          window: const TrainingWindow(fromMinutes: 450, untilMinutes: 720));
+      final r = best(
+        peakedDay(day),
+        window: const TrainingWindow(fromMinutes: 450, untilMinutes: 720),
+      );
       // 07:30, 08:30, 09:30, 10:30 (a 60-min session must end by 12:00).
-      expect([for (final o in r.dayScores) TrainingWindow.clock(
-          o.start.hour * 60 + o.start.minute)],
-          ['07:30', '08:30', '09:30', '10:30']);
+      expect(
+        [
+          for (final o in r.dayScores)
+            TrainingWindow.clock(o.start.hour * 60 + o.start.minute),
+        ],
+        ['07:30', '08:30', '09:30', '10:30'],
+      );
     });
 
     test('start times already in the past are skipped', () {
-      final r = best(peakedDay(day),
-          notBefore: DateTime(2026, 10, 24, 11, 30));
+      final r = best(peakedDay(day), notBefore: DateTime(2026, 10, 24, 11, 30));
       expect(r.best.start.hour, 12);
       expect(r.dayScores.first.start.hour, 12);
     });
@@ -292,8 +350,7 @@ void main() {
     test('period mode picks the best day', () {
       final day2 = day.add(const Duration(days: 1));
       final byHour = {
-        ...peakedDay(day)
-          ..updateAll((time, h) => hour(time, temp: 25)),
+        ...peakedDay(day)..updateAll((time, h) => hour(time, temp: 25)),
         ...peakedDay(day2),
       };
       final r = best(byHour, days: [day, day2]);
@@ -319,42 +376,55 @@ void main() {
     });
 
     test('finish before start is invalid', () {
-      expect(const TrainingWindow(fromMinutes: 600, untilMinutes: 540).isValid,
-          isFalse);
+      expect(
+        const TrainingWindow(fromMinutes: 600, untilMinutes: 540).isValid,
+        isFalse,
+      );
     });
 
     test('empty results explain what to change', () {
       expect(
-          noTimeFoundNote(
-              const TrainingWindow(fromMinutes: 420, untilMinutes: 480), 90),
-          'Your training window (07:00–08:00) is shorter than this session '
-          '(about 1 h 30 min). Widen the window or shorten the session.');
-      expect(noTimeFoundNote(const TrainingWindow(), 60),
-          contains('turn off "Daylight only"'));
+        noTimeFoundNote(
+          const TrainingWindow(fromMinutes: 420, untilMinutes: 480),
+          90,
+        ),
+        'Your training window (07:00–08:00) is shorter than this session '
+        '(about 1 h 30 min). Widen the window or shorten the session.',
+      );
       expect(
-          noTimeFoundNote(const TrainingWindow(daylightOnly: false), 60),
-          isNot(contains('Daylight')));
+        noTimeFoundNote(const TrainingWindow(), 60),
+        contains('turn off "Daylight only"'),
+      );
+      expect(
+        noTimeFoundNote(const TrainingWindow(daylightOnly: false), 60),
+        isNot(contains('Daylight')),
+      );
     });
   });
 
   test('ranking: best first, five different places, ties go closer', () {
     PlaceResult result(double score, double distance) => PlaceResult(
-          spot: Spot(
-              latitude: distance,
-              longitude: 0,
-              distanceKm: distance,
-              bearingDegrees: 0),
-          best: MatchOption(
-            start: DateTime(2026, 10, 24, 9),
-            conditions: const SessionConditions(
-                temperature: 18, humidity: 75, wind: 15, rainLikelihood: 0.3),
-            score: score,
-          ),
-          windowFirstStart: DateTime(2026, 10, 24, 9),
-          windowLastStart: DateTime(2026, 10, 24, 9),
-          durationMinutes: 60,
-          dayScores: const [],
-        );
+      spot: Spot(
+        latitude: distance,
+        longitude: 0,
+        distanceKm: distance,
+        bearingDegrees: 0,
+      ),
+      best: MatchOption(
+        start: DateTime(2026, 10, 24, 9),
+        conditions: const SessionConditions(
+          temperature: 18,
+          humidity: 75,
+          wind: 15,
+          rainLikelihood: 0.3,
+        ),
+        score: score,
+      ),
+      windowFirstStart: DateTime(2026, 10, 24, 9),
+      windowLastStart: DateTime(2026, 10, 24, 9),
+      durationMinutes: 60,
+      dayScores: const [],
+    );
     final ranked = rankResults([
       result(60, 10),
       result(90, 100),
@@ -371,9 +441,16 @@ void main() {
     PlaceResult withConditions(SessionConditions c, double score) =>
         PlaceResult(
           spot: const Spot(
-              latitude: 0, longitude: 0, distanceKm: 0, bearingDegrees: 0),
+            latitude: 0,
+            longitude: 0,
+            distanceKm: 0,
+            bearingDegrees: 0,
+          ),
           best: MatchOption(
-              start: DateTime(2026, 10, 24, 9), conditions: c, score: score),
+            start: DateTime(2026, 10, 24, 9),
+            conditions: c,
+            score: score,
+          ),
           windowFirstStart: DateTime(2026, 10, 24, 9),
           windowLastStart: DateTime(2026, 10, 24, 9),
           durationMinutes: 60,
@@ -382,41 +459,59 @@ void main() {
 
     test('good matches need no notes', () {
       expect(
-          adaptationNotes(
-            best: withConditions(
-                const SessionConditions(
-                    temperature: 18, humidity: 75, wind: 15,
-                    rainLikelihood: 0.3),
-                95),
-            target: target,
-            sport: Sport.run,
-            rangeKm: 150,
+        adaptationNotes(
+          best: withConditions(
+            const SessionConditions(
+              temperature: 18,
+              humidity: 75,
+              wind: 15,
+              rainLikelihood: 0.3,
+            ),
+            95,
           ),
-          isEmpty);
+          target: target,
+          sport: Sport.run,
+          rangeKm: 150,
+        ),
+        isEmpty,
+      );
     });
 
     test('much warmer than race day: pace advice (brief example)', () {
       final notes = adaptationNotes(
         best: withConditions(
-            const SessionConditions(
-                temperature: 24, humidity: 75, wind: 15, rainLikelihood: 0.3),
-            40),
+          const SessionConditions(
+            temperature: 24,
+            humidity: 75,
+            wind: 15,
+            rainLikelihood: 0.3,
+          ),
+          40,
+        ),
         target: target,
         sport: Sport.run,
         rangeKm: 150,
       );
-      expect(notes.single,
-          startsWith('About 6°C warmer than race day. Run at an easier pace '
-              '(roughly 10–15 sec/km slower)'));
+      expect(
+        notes.single,
+        startsWith(
+          'About 6°C warmer than race day. Run at an easier pace '
+          '(roughly 10–15 sec/km slower)',
+        ),
+      );
     });
 
-    test('race hotter than anything nearby: heat acclimatisation pointer',
-        () {
+    test('race hotter than anything nearby: heat acclimatisation pointer', () {
       final notes = adaptationNotes(
         best: withConditions(
-            const SessionConditions(
-                temperature: 10, humidity: 50, wind: 30, rainLikelihood: 0.3),
-            20),
+          const SessionConditions(
+            temperature: 10,
+            humidity: 50,
+            wind: 30,
+            rainLikelihood: 0.3,
+          ),
+          20,
+        ),
         target: target,
         sport: Sport.bike,
         rangeKm: 150,
@@ -450,8 +545,10 @@ void main() {
     });
 
     test('training bike matches the bike leg', () {
-      expect(MatchTarget.forRace(withFp, Sport.bike)!.label,
-          'bike leg 08:15–14:15');
+      expect(
+        MatchTarget.forRace(withFp, Sport.bike)!.label,
+        'bike leg 08:15–14:15',
+      );
     });
 
     test('a sport the race lacks matches the whole race window', () {
@@ -470,7 +567,9 @@ void main() {
         hours: [
           for (final y in years2)
             ...fakeHistory(
-                historyRange(marathon, y).$1, historyRange(marathon, y).$2),
+              historyRange(marathon, y).$1,
+              historyRange(marathon, y).$2,
+            ),
         ],
         years: years2,
         computedAt: DateTime(2026, 10, 18),

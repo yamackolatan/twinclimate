@@ -3,7 +3,7 @@ import '../models/matching.dart';
 import '../models/session.dart';
 import 'match_engine.dart';
 
-/// "Kilyos" when named, otherwise "38 km north".
+/// "Ouderkerk aan de Amstel" when named, otherwise "38 km north".
 String spotTitle(Spot spot) => spot.name ?? _capitalise(spotDirection(spot));
 
 /// "38 km north · 12 m altitude" (direction only when it isn't the title).

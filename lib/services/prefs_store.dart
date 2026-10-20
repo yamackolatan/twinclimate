@@ -144,6 +144,64 @@ class PrefsStore {
     Race.encodeList(races.where((r) => r.id != id).toList()),
   );
 
+  // ------------------------------------------- shopping (demo, Oct 2026) --
+
+  static const _kOwned = 'ownedGearTypes';
+  static const _kShopOn = 'shopSuggestions';
+  static const _kShopStats = 'shopStats';
+
+  /// Product types the user has ("I have this", or ticked when packing).
+  /// Shop links never appear for these again (owner: not pushy).
+  Set<String> get ownedTypes {
+    try {
+      return {...?_prefs.getStringList(_kOwned)};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> markOwned(Iterable<String> types) =>
+      _prefs.setStringList(_kOwned, {...ownedTypes, ...types}.toList());
+
+  Future<void> unmarkOwned(String type) =>
+      _prefs.setStringList(_kOwned, (ownedTypes..remove(type)).toList());
+
+  /// Settings switch: show "Don't have one?" shop suggestions.
+  bool get shopSuggestionsOn {
+    try {
+      return _prefs.getBool(_kShopOn) ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<void> setShopSuggestionsOn(bool on) => _prefs.setBool(_kShopOn, on);
+
+  /// Counters for the Partner demo screen: `event:key` → count, e.g.
+  /// `shown:run_jacket_rain`, `opened:run_jacket_rain`,
+  /// `clicked:run_jacket_rain_1` (a product id), `owned:run_jacket_rain`.
+  Map<String, int> get shopStats {
+    try {
+      final encoded = _prefs.getString(_kShopStats);
+      if (encoded == null) return {};
+      return {
+        for (final e in (jsonDecode(encoded) as Map<String, dynamic>).entries)
+          e.key: e.value as int,
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> countShop(String event, String key, [int by = 1]) {
+    final stats = shopStats;
+    final k = '$event:$key';
+    stats[k] = (stats[k] ?? 0) + by;
+    return _prefs.setString(_kShopStats, jsonEncode(stats));
+  }
+
+  Future<void> resetShopStats() => _prefs.remove(_kShopStats);
+
   // ---------------------------------------------------- comfort (F4) --
 
   /// Sessions whose kit list was opened, newest start first.

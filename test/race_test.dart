@@ -14,16 +14,15 @@ const kalmar = Place(
   longitude: 16.3568,
 );
 
-Race ironmanKalmar({String name = 'Ironman Kalmar', int startHour = 7}) =>
-    Race(
-      id: 'r1',
-      name: name,
-      place: kalmar,
-      date: DateTime(2027, 8, 29),
-      startHour: startHour,
-      startMinute: 0,
-      legs: triathlonPresets.last.legs,
-    );
+Race ironmanKalmar({String name = 'Ironman Kalmar', int startHour = 7}) => Race(
+  id: 'r1',
+  name: name,
+  place: kalmar,
+  date: DateTime(2027, 8, 29),
+  startHour: startHour,
+  startMinute: 0,
+  legs: triathlonPresets.last.legs,
+);
 
 void main() {
   group('leg timing', () {
@@ -31,8 +30,10 @@ void main() {
       final race = ironmanKalmar();
       expect(race.totalMinutes, 75 + 360 + 270);
       expect(race.windowLabel, '07:00–18:45');
-      expect(race.legTimeline,
-          'Swim 07:00–08:15 · Bike 08:15–14:15 · Run 14:15–18:45');
+      expect(
+        race.legTimeline,
+        'Swim 07:00–08:15 · Bike 08:15–14:15 · Run 14:15–18:45',
+      );
     });
 
     test('single-sport race is one window', () {
@@ -63,13 +64,18 @@ void main() {
 
   group('quick-fill buttons', () {
     test('triathlon presets when all three sports are ticked', () {
-      expect(presetsFor({Sport.swim, Sport.bike, Sport.run}).map((p) => p.label),
-          ['Sprint', 'Olympic', '70.3', 'Ironman']);
+      expect(
+        presetsFor({Sport.swim, Sport.bike, Sport.run}).map((p) => p.label),
+        ['Sprint', 'Olympic', '70.3', 'Ironman'],
+      );
     });
 
     test('run presets for a pure running race', () {
-      expect(presetsFor({Sport.run}).map((p) => p.label),
-          ['10 km', 'Half', 'Marathon']);
+      expect(presetsFor({Sport.run}).map((p) => p.label), [
+        '10 km',
+        'Half',
+        'Marathon',
+      ]);
     });
 
     test('no presets for other mixes', () {
@@ -79,7 +85,9 @@ void main() {
 
     test('every preset lists its legs in swim-bike-run order', () {
       for (final preset in [...triathlonPresets, ...runPresets]) {
-        final order = [for (final leg in preset.legs) legOrder.indexOf(leg.sport)];
+        final order = [
+          for (final leg in preset.legs) legOrder.indexOf(leg.sport),
+        ];
         expect(order, [...order]..sort(), reason: preset.label);
       }
     });
@@ -87,13 +95,17 @@ void main() {
 
   group('fingerprint cache key', () {
     test('renaming keeps the cached fingerprint', () {
-      expect(ironmanKalmar(name: 'IM Kalmar').fingerprintKey,
-          ironmanKalmar().fingerprintKey);
+      expect(
+        ironmanKalmar(name: 'IM Kalmar').fingerprintKey,
+        ironmanKalmar().fingerprintKey,
+      );
     });
 
     test('a different start time invalidates it', () {
-      expect(ironmanKalmar(startHour: 6).fingerprintKey,
-          isNot(ironmanKalmar().fingerprintKey));
+      expect(
+        ironmanKalmar(startHour: 6).fingerprintKey,
+        isNot(ironmanKalmar().fingerprintKey),
+      );
     });
 
     test('a different year of the same date keeps it (same history)', () {
@@ -122,9 +134,9 @@ void main() {
   test('race with fingerprint survives a storage round-trip', () {
     final race = ironmanKalmar();
     final withFp = race.withFingerprint(_fingerprint(race.fingerprintKey));
-    final restored =
-        Race.decodeList(jsonEncode(jsonDecode(Race.encodeList([withFp]))))
-            .single;
+    final restored = Race.decodeList(
+      jsonEncode(jsonDecode(Race.encodeList([withFp]))),
+    ).single;
     expect(restored.name, 'Ironman Kalmar');
     expect(restored.date, DateTime(2027, 8, 29));
     expect(restored.legs.map((l) => l.sport), legOrder);
@@ -157,7 +169,11 @@ RaceFingerprint _fingerprint(String key) {
     overall: stats,
     legs: const [
       LegFingerprint(
-          sport: Sport.bike, startOffset: 75, endOffset: 435, stats: stats),
+        sport: Sport.bike,
+        startOffset: 75,
+        endOffset: 435,
+        stats: stats,
+      ),
     ],
     profile: const [ProfileHour(7, 15), ProfileHour(14, 20)],
   );

@@ -59,30 +59,39 @@ class Place {
   ];
 }
 
-/// Bundled quick-pick training spots (Istanbul area, per the PRD).
+/// Bundled quick-pick training spots (Amsterdam — the app targets the EU;
+/// owner decision, Oct 2026).
 const List<Place> presetPlaces = [
   Place(
-    name: 'Belgrad Forest',
-    region: 'Istanbul',
-    country: 'Türkiye',
-    latitude: 41.1839,
-    longitude: 28.9869,
+    name: 'Vondelpark',
+    region: 'Amsterdam',
+    country: 'Netherlands',
+    latitude: 52.3580,
+    longitude: 4.8686,
     isPreset: true,
   ),
   Place(
-    name: 'Kilyos',
-    region: 'Istanbul',
-    country: 'Türkiye',
-    latitude: 41.2503,
-    longitude: 29.0397,
+    name: 'Amsterdamse Bos',
+    region: 'Amstelveen',
+    country: 'Netherlands',
+    latitude: 52.3310,
+    longitude: 4.8420,
     isPreset: true,
   ),
   Place(
-    name: 'Caddebostan',
-    region: 'Istanbul',
-    country: 'Türkiye',
-    latitude: 40.9622,
-    longitude: 29.0570,
+    name: 'Sloterplas',
+    region: 'Amsterdam',
+    country: 'Netherlands',
+    latitude: 52.3650,
+    longitude: 4.8160,
+    isPreset: true,
+  ),
+  Place(
+    name: 'Zandvoort',
+    region: 'Noord-Holland',
+    country: 'Netherlands',
+    latitude: 52.3760,
+    longitude: 4.5260,
     isPreset: true,
   ),
 ];

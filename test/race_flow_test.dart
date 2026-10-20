@@ -20,19 +20,25 @@ Future<PrefsStore> _freshStore([Map<String, Object> values = const {}]) {
 }
 
 Future<void> _pumpHome(
-    WidgetTester tester, PrefsStore store, FakeRaceWeather weather) async {
+  WidgetTester tester,
+  PrefsStore store,
+  FakeRaceWeather weather,
+) async {
   tester.view.physicalSize = const Size(1000, 3000);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
-  await tester.pumpWidget(MaterialApp(
-    home: QuickSessionPage(store: store, weather: weather),
-  ));
+  await tester.pumpWidget(
+    MaterialApp(
+      home: QuickSessionPage(store: store, weather: weather),
+    ),
+  );
 }
 
 void main() {
-  testWidgets('add Ironman Kalmar, see its race-day climate, reuse the cache',
-      (tester) async {
+  testWidgets('add Ironman Kalmar, see its race-day climate, reuse the cache', (
+    tester,
+  ) async {
     final store = await _freshStore();
     final weather = FakeRaceWeather();
     await _pumpHome(tester, store, weather);
@@ -72,9 +78,11 @@ void main() {
     await tester.tap(find.text('Ironman'));
     await tester.pump();
     expect(
-        find.textContaining(
-            'Swim 07:00–08:15 · Bike 08:15–14:15 · Run 14:15–18:45'),
-        findsOneWidget);
+      find.textContaining(
+        'Swim 07:00–08:15 · Bike 08:15–14:15 · Run 14:15–18:45',
+      ),
+      findsOneWidget,
+    );
     expect(find.textContaining('Total 11 h 45 min'), findsOneWidget);
 
     await tester.tap(find.text('Save race'));
@@ -127,7 +135,8 @@ void main() {
     for (final id in ['a', 'b', 'c']) {
       final race = ironmanKalmar();
       expect(
-          await store.saveRace(Race(
+        await store.saveRace(
+          Race(
             id: id,
             name: 'Race $id',
             place: race.place,
@@ -135,8 +144,10 @@ void main() {
             startHour: 7,
             startMinute: 0,
             legs: race.legs,
-          )),
-          isTrue);
+          ),
+        ),
+        isTrue,
+      );
     }
     expect(await store.saveRace(ironmanKalmar()), isFalse);
 
@@ -144,12 +155,15 @@ void main() {
     expect(find.text('Race a'), findsOneWidget);
     expect(find.text('Race c'), findsOneWidget);
     expect(find.text('Add race'), findsNothing);
-    expect(find.text('Up to 3 races – delete one to add another.'),
-        findsOneWidget);
+    expect(
+      find.text('Up to 3 races – delete one to add another.'),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('a race can be deleted; the app works without one',
-      (tester) async {
+  testWidgets('a race can be deleted; the app works without one', (
+    tester,
+  ) async {
     final store = await _freshStore();
     await store.saveRace(ironmanKalmar());
     await _pumpHome(tester, store, FakeRaceWeather());

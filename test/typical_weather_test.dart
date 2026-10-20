@@ -27,8 +27,10 @@ void main() {
     });
 
     test('says when the real forecast becomes available', () {
-      expect(forecastAvailableFrom(DateTime(2027, 3, 20, 8)),
-          DateTime(2027, 3, 5));
+      expect(
+        forecastAvailableFrom(DateTime(2027, 3, 20, 8)),
+        DateTime(2027, 3, 5),
+      );
     });
   });
 
@@ -37,20 +39,20 @@ void main() {
     // temperatures 10/12/14 (2024) and 12/14/16 (2025) → mean 13;
     // rain in 2 of the 6 readings → 33 %; cloud 20 % → clear code.
     List<PastHour> history() => [
-          for (final (year, base) in [(2024, 10.0), (2025, 12.0)])
-            for (var d = -1; d <= 1; d++)
-              PastHour(
-                time: DateTime.utc(year, 3, 20 + d, 8),
-                temperatureC: base + (d + 1) * 2,
-                apparentC: base + (d + 1) * 2 - 1,
-                humidityPercent: 70,
-                precipitationMm: d == 0 ? 0.6 : 0,
-                windKmh: 12,
-                gustKmh: 20,
-                radiationWm2: 300,
-                cloudCoverPercent: 20,
-              ),
-        ];
+      for (final (year, base) in [(2024, 10.0), (2025, 12.0)])
+        for (var d = -1; d <= 1; d++)
+          PastHour(
+            time: DateTime.utc(year, 3, 20 + d, 8),
+            temperatureC: base + (d + 1) * 2,
+            apparentC: base + (d + 1) * 2 - 1,
+            humidityPercent: 70,
+            precipitationMm: d == 0 ? 0.6 : 0,
+            windKmh: 12,
+            gustKmh: 20,
+            radiationWm2: 300,
+            cloudCoverPercent: 20,
+          ),
+    ];
 
     test('averages the same clock hour over years and nearby days', () {
       final hours = typicalHours(
@@ -97,18 +99,18 @@ void main() {
     });
   });
 
-  test('service: one request per year for a session, last 10 years',
-      () async {
+  test('service: one request per year for a session, last 10 years', () async {
     final fake = FakeHistoryService();
     final start = DateTime(2027, 3, 20, 8);
     final slots = [start, start.add(const Duration(hours: 1))];
     final t = await TypicalWeatherService(fake, clock: () => now).forSession(
       const Place(
-          name: 'Belgrad Forest',
-          region: '',
-          country: '',
-          latitude: 41.18,
-          longitude: 28.99),
+        name: 'Vondelpark',
+        region: '',
+        country: '',
+        latitude: 41.18,
+        longitude: 28.99,
+      ),
       slots,
     );
     expect(fake.requests, hasLength(10));
@@ -122,26 +124,31 @@ void main() {
   });
 
   group('race matching beyond the forecast', () {
-    MatchRequest request(MatchMode mode, DateTime date,
-            {DateTime? periodStart, int periodDays = 14}) =>
-        MatchRequest(
-          race: kalmarWithFingerprint(),
-          sport: Sport.run,
-          home: (name: 'Belgrad Forest', latitude: homeLat, longitude: homeLon),
-          distanceKm: 10,
-          rangeKm: 150,
-          mode: mode,
-          date: date,
-          periodDays: periodDays,
-          periodStart: periodStart,
-          weights: MatchWeights.forSport(Sport.run),
-          window: const TrainingWindow(daylightOnly: false),
-        );
+    MatchRequest request(
+      MatchMode mode,
+      DateTime date, {
+      DateTime? periodStart,
+      int periodDays = 14,
+    }) => MatchRequest(
+      race: kalmarWithFingerprint(),
+      sport: Sport.run,
+      home: (name: 'Vondelpark', latitude: homeLat, longitude: homeLon),
+      distanceKm: 10,
+      rangeKm: 150,
+      mode: mode,
+      date: date,
+      periodDays: periodDays,
+      periodStart: periodStart,
+      weights: MatchWeights.forSport(Sport.run),
+      window: const TrainingWindow(daylightOnly: false),
+    );
 
     test('a date months away is ranked by typical weather', () async {
       final weather = FakeMatchWeather();
-      final result = await MatchService(weather, clock: () => now)
-          .run(request(MatchMode.specificDate, DateTime(2027, 5, 15)));
+      final result = await MatchService(
+        weather,
+        clock: () => now,
+      ).run(request(MatchMode.specificDate, DateTime(2027, 5, 15)));
       expect(result.typical, isNotNull);
       expect(result.typical!.firstYear, 2017);
       expect(result.typical!.forPeriod, isFalse);
@@ -165,48 +172,63 @@ void main() {
 
     test('a period reaching past the forecast uses its middle day', () async {
       final result = await MatchService(FakeMatchWeather(), clock: () => now)
-          .run(request(MatchMode.period, now,
-              periodStart: DateTime(2027, 1, 10), periodDays: 7));
+          .run(
+            request(
+              MatchMode.period,
+              now,
+              periodStart: DateTime(2027, 1, 10),
+              periodDays: 7,
+            ),
+          );
       expect(result.typical!.forPeriod, isTrue);
       expect(result.typical!.date, DateTime(2027, 1, 13));
     });
 
     test('within the forecast nothing changes', () async {
       final weather = FakeMatchWeather();
-      final result = await MatchService(weather, clock: () => now)
-          .run(request(MatchMode.specificDate, DateTime(2026, 10, 24)));
+      final result = await MatchService(
+        weather,
+        clock: () => now,
+      ).run(request(MatchMode.specificDate, DateTime(2026, 10, 24)));
       expect(result.typical, isNull);
       expect(weather.manyHistoryCalls, isEmpty);
     });
   });
 
-  testWidgets('kit screen beyond 16 days shows typical weather, clearly',
-      (tester) async {
+  testWidgets('kit screen beyond 16 days shows typical weather, clearly', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1000, 3000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final soon = DateTime.now();
     final start = DateTime(soon.year, soon.month, soon.day + 60, 8);
-    await tester.pumpWidget(MaterialApp(
-      home: SessionResultPage(
-        plan: SessionPlan(
-          sport: Sport.run,
-          place: presetPlaces.first,
-          start: start,
-          distanceKm: 10,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SessionResultPage(
+          plan: SessionPlan(
+            sport: Sport.run,
+            place: presetPlaces.first,
+            start: start,
+            distanceKm: 10,
+          ),
+          weather: HistoryAndForecast(),
         ),
-        weather: HistoryAndForecast(),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
-    expect(find.textContaining('Typical weather, not a forecast'),
-        findsOneWidget);
+    expect(
+      find.textContaining('Typical weather, not a forecast'),
+      findsOneWidget,
+    );
     expect(find.textContaining('Typically feels like'), findsOneWidget);
     expect(
-        find.textContaining(
-            'The real forecast is available from ${formatDay(start.subtract(const Duration(days: 15)))}'),
-        findsOneWidget);
+      find.textContaining(
+        'The real forecast is available from ${formatDay(start.subtract(const Duration(days: 15)))}',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Your kit'), findsOneWidget);
   });
 }

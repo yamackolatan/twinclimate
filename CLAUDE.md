@@ -312,16 +312,63 @@ kit shows a lighter torso item with a personalized reason.
   `lib/widgets/feedback_card.dart`, `lib/screens/comfort_profile_page.dart`;
   gear engine takes an optional `ComfortProfile`.
 
-### F5 — Packing reminder
-- Toggle on the result screen; local notification evening before (19:00) or
-  morning-of with conditions + kit highlights. On web preview, where
-  notifications are limited, an in-app "upcoming session" banner is the
-  acceptable fallback — say so to the owner rather than silently skipping.
+### F5 — Packing reminder — CANCELLED by the owner (Oct 2026)
+Replaced by the two shopping features (F5a, F5b) below.
+
+### Market & demo status (owner decision, Oct 2026)
+- The owner lives in **Amsterdam**; the app is built for the **EU**.
+  Quick-pick places: Vondelpark, Amsterdamse Bos, Sloterplas, Zandvoort.
+- This is a **demo/trial** to attract investors and brand partners. No real
+  orders: shop links simply open the product page on **decathlon.nl** (NL
+  only). No partnership exists yet — every product area says "Shop links
+  go to decathlon.nl. Demo — not affiliated with Decathlon."
+- **Catalogue method:** decathlon.nl blocks automated reading (Cloudflare
+  bot check) — do NOT try to get around it. The catalogue in
+  `lib/data/decathlon_catalogue.dart` is a dated snapshot (`catalogueDate`)
+  compiled from web-search listings of real decathlon.nl product pages:
+  real names and links; price, rating and review count only where the
+  listing showed them, otherwise null — never invented. Icon cards, no
+  product photos.
+- **Not pushy rules:** at most 3 shop links per kit list (rain/wind gear
+  first, then torso, hands, head, legs, feet; optional items last); a
+  small text link, never a banner; never for gear the user has ("I already
+  have this", or ticked while packing → saved in "My gear"); one switch
+  turns all suggestions off (menu → My gear & shopping); the race-day kit
+  is folded away until opened.
+
+### F5a — Kit shopping (Quick Session)
+- Under kit items the user may not own: "Don't have one? See options at
+  Decathlon" → a sheet with the item's reason and 1–3 products matched by
+  product type and function (`itemProductTypes` in `lib/logic/
+  shop_logic.dart`), each with brand, price, rating (or "Reviews on
+  decathlon.nl"), what it's good for, and "View at decathlon.nl" (new tab).
+- Ranking: rating shrunk towards 4.0★ until there are enough reviews, plus
+  a small popularity bonus — a 4.7★ product with 1,000 reviews beats 5★
+  with 3; unrated last.
+
+### F5b — Race-day kit (Race Matching)
+- Below the matched places: "Race-day kit for <race>" (folded), up to 5
+  picks chosen from the race's typical weather (wetsuit below 20 °C,
+  trisuit for triathlons, gels for races ≥ 90 min, electrolytes when warm
+  or humid, rain jacket when ≥ 30 % of race days are wet, gilet for windy
+  bike legs, cap/top, bottle, soft flask, race belt, gloves, sunscreen),
+  each with its reason. Per need, the best-rated product; unrated only
+  when its type has no rated one.
+
+### Partner demo screen
+- Menu → Partner demo: suggestions shown, opened, clicks to shop, "already
+  have it", shown → shop rate, most opened needs, most clicked products.
+  Counted on the device only; reset button. For pitching to brands.
+- Code: `lib/models/product.dart`, `lib/data/decathlon_catalogue.dart`,
+  `lib/logic/shop_logic.dart`, `lib/widgets/product_sheet.dart`,
+  `lib/screens/my_gear_page.dart`, `lib/screens/partner_demo_page.dart`;
+  tests in `test/shop_test.dart` (every kit item must be mapped or listed
+  in `noShopItems`).
 
 ### Later phases (do NOT start without the owner asking)
 - V2: exact route suggestions (OSM/Overpass + loop generation, elevation,
   surface), cycling-specific matching, Turkish localization.
-- V3: product alternatives via affiliate links, size capture at intent, swim
+- V3: real affiliate links / partner feeds, size capture at intent, swim
   water temperature, Strava/Garmin, proactive plan-aware notifications.
 
 ## 5. Engineering conventions
@@ -339,7 +386,8 @@ kit shows a lighter torso item with a personalized reason.
 2. F2 Target race + fingerprint.
 3. F3 Race Matching (fixed-date first, then flexible-period).
 4. F4 Feedback loop + comfort profile.
-5. F5 Packing reminder.
+5. ~~F5 Packing reminder~~ (cancelled) → F5a Kit shopping, F5b Race-day
+   kit, Partner demo screen.
 Then stop and review with the owner before any V2/V3 work.
 
 ## 7. Current state warning

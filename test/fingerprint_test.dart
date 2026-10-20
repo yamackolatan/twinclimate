@@ -19,19 +19,24 @@ import 'race_test.dart' show ironmanKalmar, kalmar;
 List<PastHour> fakeHistory(DateTime firstDay, DateTime lastDay) {
   final hours = <PastHour>[];
   var day = DateTime.utc(firstDay.year, firstDay.month, firstDay.day);
-  final end = DateTime.utc(lastDay.year, lastDay.month, lastDay.day)
-      .add(const Duration(days: 1));
+  final end = DateTime.utc(
+    lastDay.year,
+    lastDay.month,
+    lastDay.day,
+  ).add(const Duration(days: 1));
   while (day.isBefore(end)) {
     for (var h = 0; h < 24; h++) {
-      hours.add(PastHour(
-        time: day.add(Duration(hours: h)),
-        temperatureC: 12 + h * 0.5,
-        apparentC: 11 + h * 0.5,
-        humidityPercent: 80,
-        precipitationMm: day.day % 3 == 0 && h == 10 ? 2 : 0,
-        windKmh: 15,
-        gustKmh: 28,
-      ));
+      hours.add(
+        PastHour(
+          time: day.add(Duration(hours: h)),
+          temperatureC: 12 + h * 0.5,
+          apparentC: 11 + h * 0.5,
+          humidityPercent: 80,
+          precipitationMm: day.day % 3 == 0 && h == 10 ? 2 : 0,
+          windKmh: 15,
+          gustKmh: 28,
+        ),
+      );
     }
     day = day.add(const Duration(days: 1));
   }
@@ -56,8 +61,7 @@ class FakeHistoryService implements WeatherService {
     required Place place,
     required DateTime firstDay,
     required DateTime lastDay,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 
   @override
   Future<List<Place>> searchPlaces(String query) => throw UnimplementedError();
@@ -82,8 +86,7 @@ class FakeHistoryService implements WeatherService {
     required List<(double, double)> points,
     required DateTime firstDay,
     required DateTime lastDay,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }
 
 void main() {
@@ -92,17 +95,18 @@ void main() {
   group('which years are used', () {
     test('late-August race seen in October uses 2017-2026: the 10 most '
         'recent years with data (owner decision 5)', () {
-      expect(fingerprintYears(ironmanKalmar(), today),
-          [for (var y = 2017; y <= 2026; y++) y]);
+      expect(fingerprintYears(ironmanKalmar(), today), [
+        for (var y = 2017; y <= 2026; y++) y,
+      ]);
     });
 
     test('the same race seen in June uses 2016-2025', () {
-      expect(fingerprintYears(ironmanKalmar(), DateTime(2026, 6, 1)),
-          [for (var y = 2016; y <= 2025; y++) y]);
+      expect(fingerprintYears(ironmanKalmar(), DateTime(2026, 6, 1)), [
+        for (var y = 2016; y <= 2025; y++) y,
+      ]);
     });
 
-    test('a date whose window already passed this year includes this year',
-        () {
+    test('a date whose window already passed this year includes this year', () {
       final race = _runRace(DateTime(2027, 9, 20));
       expect(fingerprintYears(race, today).last, 2026);
       expect(fingerprintYears(race, today).length, 10);
@@ -133,7 +137,11 @@ void main() {
         ...fakeHistory(historyRange(race, y).$1, historyRange(race, y).$2),
     ];
     final fp = buildFingerprint(
-        race: race, hours: hours, years: years, computedAt: today);
+      race: race,
+      hours: hours,
+      years: years,
+      computedAt: today,
+    );
 
     test('uses 10 years × 11 days, race hours only', () {
       expect(fp.overall.dayCount, 110);
@@ -188,8 +196,10 @@ void main() {
         'Kalmar on 29 Aug, 07:00–18:45: typically 17–20°C, humid, '
         'about 15 km/h wind, 36% rain chance',
       );
-      expect(profileLine(race, fp),
-          'About 16°C at the 07:00 start, about 21°C at the 18:45 finish.');
+      expect(
+        profileLine(race, fp),
+        'About 16°C at the 07:00 start, about 21°C at the 18:45 finish.',
+      );
     });
   });
 
@@ -199,7 +209,9 @@ void main() {
     final hours = [
       for (final y in years)
         for (final h in fakeHistory(
-            historyRange(race, y).$1, historyRange(race, y).$2))
+          historyRange(race, y).$1,
+          historyRange(race, y).$2,
+        ))
           PastHour(
             time: h.time,
             temperatureC: 20 - (h.time.hour - 13).abs().toDouble(),
@@ -211,38 +223,53 @@ void main() {
           ),
     ];
     final fp = buildFingerprint(
-        race: race, hours: hours, years: years, computedAt: today);
-    expect(profileLine(race, fp),
-        'About 16°C at the 09:00 start, warmest around 13:00 (about 20°C), '
-        'about 19°C at the 15:00 finish.');
+      race: race,
+      hours: hours,
+      years: years,
+      computedAt: today,
+    );
+    expect(
+      profileLine(race, fp),
+      'About 16°C at the 09:00 start, warmest around 13:00 (about 20°C), '
+      'about 19°C at the 15:00 finish.',
+    );
     expect(conditionRows(fp.overall).last.$2, 'Dry on all 22 past race days');
   });
 
   test('missing data is reported, not faked', () {
     expect(
       () => buildFingerprint(
-          race: ironmanKalmar(), hours: const [], years: [2025],
-          computedAt: today),
+        race: ironmanKalmar(),
+        hours: const [],
+        years: [2025],
+        computedAt: today,
+      ),
       throwsA(isA<FingerprintException>()),
     );
   });
 
-  test('service downloads one small request per year and reports progress',
-      () async {
-    final fake = FakeHistoryService();
-    final progress = <int>[];
-    final fp = await FingerprintService(fake, clock: () => today)
-        .compute(ironmanKalmar(), onProgress: (done, _) => progress.add(done));
-    expect(fake.requests, hasLength(10));
-    expect(progress.last, 10);
-    expect(fp.key, ironmanKalmar().fingerprintKey);
-  });
+  test(
+    'service downloads one small request per year and reports progress',
+    () async {
+      final fake = FakeHistoryService();
+      final progress = <int>[];
+      final fp = await FingerprintService(
+        fake,
+        clock: () => today,
+      ).compute(ironmanKalmar(), onProgress: (done, _) => progress.add(done));
+      expect(fake.requests, hasLength(10));
+      expect(progress.last, 10);
+      expect(fp.key, ironmanKalmar().fingerprintKey);
+    },
+  );
 
   test('two stalled requests in a row for a year still recover', () async {
     final flaky = FlakyHistoryService(2);
-    final fp = await FingerprintService(flaky,
-            clock: () => today, retryDelay: Duration.zero)
-        .compute(ironmanKalmar());
+    final fp = await FingerprintService(
+      flaky,
+      clock: () => today,
+      retryDelay: Duration.zero,
+    ).compute(ironmanKalmar());
     expect(fp.yearCount, 10);
     expect(flaky.requests, hasLength(30));
   });
@@ -250,9 +277,11 @@ void main() {
   test('the daily limit is not retried pointlessly', () async {
     final limited = FlakyHistoryService(5, retryable: false);
     await expectLater(
-      FingerprintService(limited,
-              clock: () => today, retryDelay: Duration.zero)
-          .compute(ironmanKalmar()),
+      FingerprintService(
+        limited,
+        clock: () => today,
+        retryDelay: Duration.zero,
+      ).compute(ironmanKalmar()),
       throwsA(isA<WeatherServiceException>()),
     );
     expect(limited.requests, hasLength(10));
@@ -279,16 +308,19 @@ class FlakyHistoryService extends FakeHistoryService {
       throw WeatherServiceException('stalled', retryable: retryable);
     }
     return super.fetchHistory(
-        place: place, firstDay: firstDay, lastDay: lastDay);
+      place: place,
+      firstDay: firstDay,
+      lastDay: lastDay,
+    );
   }
 }
 
 Race _runRace(DateTime date, {int startHour = 9, int minutes = 60}) => Race(
-      id: 'x',
-      name: 'Test run',
-      place: kalmar,
-      date: date,
-      startHour: startHour,
-      startMinute: 0,
-      legs: [RaceLeg(sport: Sport.run, distanceKm: 10, minutes: minutes)],
-    );
+  id: 'x',
+  name: 'Test run',
+  place: kalmar,
+  date: date,
+  startHour: startHour,
+  startMinute: 0,
+  legs: [RaceLeg(sport: Sport.run, distanceKm: 10, minutes: minutes)],
+);

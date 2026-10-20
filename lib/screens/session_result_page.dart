@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../logic/gear_engine.dart';
+import '../logic/shop_logic.dart';
 import '../logic/typical_weather.dart';
 import '../logic/weather_text.dart';
 import '../models/comfort.dart';
+import '../models/gear.dart';
 import '../models/session.dart';
 import '../models/weather.dart';
 import '../services/prefs_store.dart';
@@ -11,6 +13,7 @@ import '../services/typical_weather_service.dart';
 import '../services/weather_service.dart';
 import '../widgets/hour_cards.dart';
 import '../widgets/kit_checklist.dart';
+import '../widgets/product_sheet.dart';
 
 /// The answer screen: session-window forecast + what to wear and bring.
 class SessionResultPage extends StatefulWidget {
@@ -123,10 +126,45 @@ class _SessionResultPageState extends State<SessionResultPage> {
   }
 
   void _onPacked(Set<String> packed, bool allPacked) {
-    widget.store?.updateSession(
+    final store = widget.store;
+    store?.updateSession(
       _sessionId,
       (r) => r.copyWith(packed: packed, allPacked: allPacked),
     );
+    // Packing an item means owning it: no shop link for it again.
+    final types = [for (final name in packed) ...?itemProductTypes[name]];
+    if (store != null && types.any((t) => !store.ownedTypes.contains(t))) {
+      store.markOwned(types).then((_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  /// Shop suggestion types already counted as "shown" on this screen.
+  final Set<String> _countedShown = {};
+
+  Set<GearItem> _shopItems(List<GearItem> kit) {
+    final store = widget.store;
+    if (store == null || !store.shopSuggestionsOn) return const {};
+    final items = itemsToOffer(kit, ownedTypes: store.ownedTypes);
+    for (final item in items) {
+      for (final type in itemProductTypes[item.name]!) {
+        if (_countedShown.add(type)) store.countShop('shown', type);
+      }
+    }
+    return items;
+  }
+
+  Future<void> _openShop(GearItem item) async {
+    final owned = await ProductSheet.show(
+      context,
+      title: item.name,
+      why: item.reason,
+      products: productsForItem(item),
+      types: itemProductTypes[item.name] ?? const [],
+      store: widget.store,
+    );
+    if (owned && mounted) setState(() {});
   }
 
   @override
@@ -188,6 +226,7 @@ class _SessionResultPageState extends State<SessionResultPage> {
     );
     final scheme = Theme.of(context).colorScheme;
     final start = forecast.atStart;
+    final shopItems = _shopItems(kit);
 
     return SingleChildScrollView(
       child: Center(
@@ -283,7 +322,19 @@ class _SessionResultPageState extends State<SessionResultPage> {
                   items: kit,
                   initialPacked: _savedPacked,
                   onPackedChanged: _onPacked,
+                  shopItems: shopItems,
+                  onShop: _openShop,
                 ),
+                if (shopItems.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    shopDisclosure,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
                 const SizedBox(height: 24),
 
                 Text(

@@ -11,6 +11,8 @@ class KitChecklist extends StatefulWidget {
     required this.items,
     this.initialPacked = const {},
     this.onPackedChanged,
+    this.shopItems = const {},
+    this.onShop,
   });
 
   final List<GearItem> items;
@@ -21,6 +23,10 @@ class KitChecklist extends StatefulWidget {
   /// Called with the ticked item names and whether everything is packed.
   /// Ticks double as "what you wore" for the comfort profile (F4).
   final void Function(Set<String> packed, bool allPacked)? onPackedChanged;
+
+  /// Items that get a quiet "Don't have one?" shop link (at most a few).
+  final Set<GearItem> shopItems;
+  final void Function(GearItem item)? onShop;
 
   @override
   State<KitChecklist> createState() => _KitChecklistState();
@@ -202,7 +208,40 @@ class _KitChecklistState extends State<KitChecklist> {
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
+                    if (!isPacked &&
+                        widget.onShop != null &&
+                        widget.shopItems.contains(item))
+                      _shopLink(context, item),
                   ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _shopLink(BuildContext context, GearItem item) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => widget.onShop!(item),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.storefront_outlined, size: 16, color: scheme.primary),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  "Don't have one? See options at Decathlon",
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelMedium?.copyWith(color: scheme.primary),
                 ),
               ),
             ],

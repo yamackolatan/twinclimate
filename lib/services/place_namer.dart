@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-/// Turns coordinates into a human place name ("Kilyos"). Returns null when
+/// Turns coordinates into a human place name ("Ouderkerk aan de Amstel"). Returns null when
 /// no name is available; callers fall back to "38 km north".
 abstract class PlaceNamer {
   Future<String?> nameFor(double latitude, double longitude);

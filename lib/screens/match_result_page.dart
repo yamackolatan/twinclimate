@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../data/decathlon_catalogue.dart';
 import '../logic/fingerprint_text.dart';
 import '../logic/match_engine.dart';
 import '../logic/match_text.dart';
+import '../logic/shop_logic.dart';
 import '../logic/typical_weather.dart';
 import '../models/matching.dart';
 import '../models/place.dart';
@@ -13,6 +15,7 @@ import '../services/match_service.dart';
 import '../services/place_namer.dart';
 import '../services/prefs_store.dart';
 import '../services/weather_service.dart';
+import '../widgets/product_sheet.dart';
 import 'session_result_page.dart';
 
 /// Race Matching results (F3): the best places and time windows to train
@@ -352,6 +355,8 @@ class _MatchResultPageState extends State<MatchResultPage> {
           onMap: () => _openMap(result.results[i].spot),
           typicalPeriod: result.typical?.forPeriod ?? false,
         ),
+      const SizedBox(height: 4),
+      _raceKitSection(),
       const SizedBox(height: 12),
       if (_request.sport == Sport.swim)
         Padding(
@@ -373,6 +378,56 @@ class _MatchResultPageState extends State<MatchResultPage> {
         style: muted,
       ),
     ];
+  }
+}
+
+extension on _MatchResultPageState {
+  /// "Race-day kit": a few top-rated Decathlon best sellers that suit the
+  /// race's typical weather (owner feature 2). Folded away until opened,
+  /// so it never gets in the way of the results.
+  Widget _raceKitSection() {
+    final store = widget.store;
+    final fingerprint = _request.race.validFingerprint;
+    if (!store.shopSuggestionsOn || fingerprint == null) {
+      return const SizedBox.shrink();
+    }
+    final picks = raceKit(
+      race: _request.race,
+      conditions: fingerprint.overall,
+      sport: _request.sport,
+      ownedTypes: store.ownedTypes,
+    );
+    if (picks.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerLow,
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        leading: const Icon(Icons.shopping_bag_outlined),
+        title: Text('Race-day kit for ${_request.race.name}'),
+        subtitle: Text(
+          '${picks.length} Decathlon picks for a typical '
+          '${temperatureRange(fingerprint.overall.temperature)} race day',
+        ),
+        onExpansionChanged: (open) {
+          if (open) store.countShop('opened', 'race_kit');
+        },
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        children: [
+          for (final pick in picks)
+            ProductTile(product: pick.product, store: store, why: pick.why),
+          Text(
+            'For each need we pick the best-rated product on decathlon.nl '
+            '(customer ratings as listed in $catalogueDate; some products '
+            'show no rating). $shopDisclosure',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -6,13 +6,12 @@ SessionPlan plan({
   Sport sport = Sport.run,
   required DateTime start,
   required double distanceKm,
-}) =>
-    SessionPlan(
-      sport: sport,
-      place: presetPlaces.first,
-      start: start,
-      distanceKm: distanceKm,
-    );
+}) => SessionPlan(
+  sport: sport,
+  place: presetPlaces.first,
+  start: start,
+  distanceKm: distanceKm,
+);
 
 void main() {
   group('session window', () {
@@ -41,9 +40,10 @@ void main() {
 
     test('100 km ride at 10:00 covers 10:00 to 14:00', () {
       final p = plan(
-          sport: Sport.bike,
-          start: DateTime(2026, 6, 13, 10),
-          distanceKm: 100);
+        sport: Sport.bike,
+        start: DateTime(2026, 6, 13, 10),
+        distanceKm: 100,
+      );
       expect(p.windowHours, [
         DateTime(2026, 6, 13, 10),
         DateTime(2026, 6, 13, 11),

@@ -52,7 +52,7 @@ SessionRecord finishedRun(
   return SessionRecord(
     id: id,
     sport: Sport.run,
-    placeName: 'Belgrad Forest',
+    placeName: 'Vondelpark',
     latitude: 41.1839,
     longitude: 28.9869,
     start: end.subtract(const Duration(minutes: 90)),
@@ -89,10 +89,7 @@ void main() {
     await store.recordSession(finishedRun('first'));
     await pumpHome(tester, store);
 
-    expect(
-      find.text('How did your run at Belgrad Forest feel?'),
-      findsOneWidget,
-    );
+    expect(find.text('How did your run at Vondelpark feel?'), findsOneWidget);
     await tester.tap(find.text('Too warm'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Next'));
@@ -235,8 +232,9 @@ void main() {
     );
   });
 
-  testWidgets('several answers: warm torso and legs, cold hands',
-      (tester) async {
+  testWidgets('several answers: warm torso and legs, cold hands', (
+    tester,
+  ) async {
     final store = await freshStore();
     await store.recordSession(finishedRun('multi'));
     await pumpHome(tester, store);
@@ -246,15 +244,18 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Too cold'));
     await tester.pump();
-    expect(find.text('Both: some parts too cold, others too warm.'),
-        findsOneWidget);
+    expect(
+      find.text('Both: some parts too cold, others too warm.'),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
     expect(find.text('Where did you feel too warm?'), findsOneWidget);
     expect(find.text('Where did you feel too cold?'), findsOneWidget);
 
     FilterChip chip(String label, int row) => tester.widget<FilterChip>(
-        find.widgetWithText(FilterChip, label).at(row));
+      find.widgetWithText(FilterChip, label).at(row),
+    );
     FilledButton done() =>
         tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Done'));
 
@@ -293,16 +294,16 @@ void main() {
     await tester.tap(find.text('Yes'));
     await tester.pumpAndSettle();
 
-    final answers = {
-      for (final e in store.feedback) (e.feeling, e.part),
-    };
+    final answers = {for (final e in store.feedback) (e.feeling, e.part)};
     expect(answers, {
       (Feeling.tooWarm, BodyPart.torso),
       (Feeling.tooWarm, BodyPart.legs),
       (Feeling.tooCold, BodyPart.hands),
     });
-    expect(find.textContaining('Noted. One more report like this'),
-        findsOneWidget);
+    expect(
+      find.textContaining('Noted. One more report like this'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('no card before the session has finished', (tester) async {
@@ -312,7 +313,7 @@ void main() {
       SessionRecord(
         id: 'now',
         sport: Sport.run,
-        placeName: 'Belgrad Forest',
+        placeName: 'Vondelpark',
         latitude: 41.18,
         longitude: 28.99,
         start: start,
@@ -351,7 +352,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final record = store.sessionRecords.single;
-    expect(record.placeName, 'Belgrad Forest');
+    expect(record.placeName, 'Vondelpark');
     expect(record.suggested[BodyPart.torso], isNotNull);
 
     final torsoItem = record.suggested[BodyPart.torso]!;

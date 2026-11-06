@@ -95,12 +95,14 @@ void main() {
       ),
     );
 
-    // The form starts with no place chosen.
+    // First visit: a quick-pick place is already chosen, so the answer
+    // is one tap away.
     expect(find.text('Quick Session'), findsOneWidget);
-    expect(find.text('Pick a place'), findsOneWidget);
+    expect(find.text('Pick a place'), findsNothing);
+    expect(find.text('Vondelpark'), findsNWidgets(2));
 
     // One tap on a preset quick pick...
-    await tester.tap(find.text('Vondelpark'));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Vondelpark'));
     await tester.pump();
 
     // ...and ask for the answer.

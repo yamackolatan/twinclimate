@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../logic/gear_engine.dart';
+import '../logic/share_text.dart';
 import '../logic/shop_logic.dart';
 import '../logic/typical_weather.dart';
 import '../logic/weather_text.dart';
@@ -8,6 +10,7 @@ import '../models/comfort.dart';
 import '../models/gear.dart';
 import '../models/session.dart';
 import '../models/weather.dart';
+import '../services/device_services.dart';
 import '../services/prefs_store.dart';
 import '../services/typical_weather_service.dart';
 import '../services/weather_service.dart';
@@ -22,10 +25,15 @@ class SessionResultPage extends StatefulWidget {
     required this.plan,
     required this.weather,
     this.store,
+    this.onPlanChanged,
   });
 
   final SessionPlan plan;
   final WeatherService weather;
+
+  /// Told when the user moves the session from this screen ("1 h later"),
+  /// so the form behind it shows the same time.
+  final void Function(SessionPlan plan)? onPlanChanged;
 
   /// When given, the kit uses the user's comfort profile and the session
   /// is remembered for the post-session feedback card (F4).
@@ -169,6 +177,50 @@ class _SessionResultPageState extends State<SessionResultPage> {
     if (owned && mounted) setState(() {});
   }
 
+  /// What's on screen, for the Share button.
+  SessionForecast? _shown;
+
+  Future<void> _share() async {
+    final forecast = _shown;
+    if (forecast == null) return;
+    final plan = widget.plan;
+    final text = sessionShareText(
+      plan,
+      forecast,
+      buildKitForPlan(plan, forecast, comfort: widget.store?.comfortProfile),
+      typical: _typical != null,
+    );
+    if (await shareText(text)) return;
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Kit list copied — paste it anywhere.')),
+    );
+  }
+
+  /// Re-runs the same session [hours] earlier or later.
+  void _shift(int hours) {
+    final p = widget.plan;
+    final moved = SessionPlan(
+      sport: p.sport,
+      place: p.place,
+      start: p.start.add(Duration(hours: hours)),
+      distanceKm: p.distanceKm,
+    );
+    widget.onPlanChanged?.call(moved);
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, _, _) => SessionResultPage(
+          plan: moved,
+          weather: widget.weather,
+          store: widget.store,
+          onPlanChanged: widget.onPlanChanged,
+        ),
+        transitionDuration: Duration.zero,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final plan = widget.plan;
@@ -176,6 +228,18 @@ class _SessionResultPageState extends State<SessionResultPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
         title: Text(plan.place.name),
+        actions: [
+          IconButton(
+            tooltip: 'Change session',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
+          IconButton(
+            tooltip: 'Share kit list',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: _share,
+          ),
+        ],
       ),
       body: FutureBuilder<SessionForecast>(
         future: _forecast,
@@ -234,6 +298,11 @@ class _SessionResultPageState extends State<SessionResultPage> {
     final scheme = Theme.of(context).colorScheme;
     final start = forecast.atStart;
     final shopItems = _shopItems(kit);
+    _shown = forecast;
+    final now = DateTime.now();
+    final canGoEarlier = plan.start
+        .subtract(const Duration(hours: 1))
+        .isAfter(now.subtract(const Duration(minutes: 30)));
 
     return SingleChildScrollView(
       child: Center(
@@ -323,6 +392,27 @@ class _SessionResultPageState extends State<SessionResultPage> {
                 ),
                 const SizedBox(height: 8),
                 HourCards(hours: forecast.hours),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: canGoEarlier ? () => _shift(-1) : null,
+                        icon: const Icon(Icons.chevron_left),
+                        label: const Text('1 h earlier'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _shift(1),
+                        icon: const Icon(Icons.chevron_right),
+                        label: const Text('1 h later'),
+                        iconAlignment: IconAlignment.end,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 20),
 
                 KitChecklist(

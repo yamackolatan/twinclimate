@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/place.dart';
+import '../services/device_services.dart' as device;
+import '../services/place_namer.dart';
 import '../services/weather_service.dart';
 
 /// Bottom sheet for picking a place: presets and saved places first,
@@ -13,15 +15,24 @@ class PlaceSearchSheet extends StatefulWidget {
     super.key,
     required this.weather,
     required this.savedPlaces,
+    this.namer,
+    this.locate = device.currentPosition,
   });
 
   final WeatherService weather;
   final List<Place> savedPlaces;
 
+  /// Names "my location"; defaults to OpenStreetMap.
+  final PlaceNamer? namer;
+
+  /// The device position, as (latitude, longitude) or null.
+  final Future<(double, double)?> Function() locate;
+
   static Future<Place?> show(
     BuildContext context, {
     required WeatherService weather,
     required List<Place> savedPlaces,
+    PlaceNamer? namer,
   }) {
     return showModalBottomSheet<Place>(
       context: context,
@@ -31,7 +42,11 @@ class PlaceSearchSheet extends StatefulWidget {
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: PlaceSearchSheet(weather: weather, savedPlaces: savedPlaces),
+        child: PlaceSearchSheet(
+          weather: weather,
+          savedPlaces: savedPlaces,
+          namer: namer,
+        ),
       ),
     );
   }
@@ -46,7 +61,43 @@ class _PlaceSearchSheetState extends State<PlaceSearchSheet> {
   String _query = '';
   List<Place> _results = const [];
   bool _searching = false;
+  bool _locating = false;
   String? _error;
+
+  Future<void> _useMyLocation() async {
+    setState(() {
+      _locating = true;
+      _error = null;
+    });
+    final position = await widget.locate();
+    if (!mounted) return;
+    if (position == null) {
+      setState(() {
+        _locating = false;
+        _error =
+            'Couldn\'t get your location. Allow location access for this '
+            'site in your browser, or search for the place instead.';
+      });
+      return;
+    }
+    final (lat, lon) = position;
+    String? name;
+    try {
+      name = await (widget.namer ?? OsmPlaceNamer()).nameFor(lat, lon);
+    } catch (_) {
+      name = null;
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop(
+      Place(
+        name: name ?? 'My location',
+        region: 'Your location',
+        country: '',
+        latitude: lat,
+        longitude: lon,
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -128,11 +179,19 @@ class _PlaceSearchSheetState extends State<PlaceSearchSheet> {
               ),
             ),
           ),
-          if (_searching) const LinearProgressIndicator(),
+          if (_searching || _locating) const LinearProgressIndicator(),
           Expanded(
             child: ListView(
               controller: scrollController,
               children: [
+                if (_query.isEmpty)
+                  ListTile(
+                    leading: const Icon(Icons.my_location),
+                    title: const Text('Use my location'),
+                    subtitle: const Text('Weather for exactly where you are'),
+                    enabled: !_locating,
+                    onTap: _useMyLocation,
+                  ),
                 if (local.isNotEmpty) ...[
                   _sectionLabel(
                     context,

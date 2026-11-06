@@ -104,10 +104,11 @@ class _ComfortProfilePageState extends State<ComfortProfilePage> {
                   style: muted,
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  'How warm do you run?',
-                  style: theme.textTheme.titleMedium,
-                ),
+                Text(switch (sport) {
+                  Sport.run => 'How warm do you run?',
+                  Sport.bike => 'How warm do you feel on the bike?',
+                  Sport.swim => 'How warm do you feel around a swim?',
+                }, style: theme.textTheme.titleMedium),
                 for (final part in BodyPart.values)
                   _sliderRow(sport, part, profile.manual(sport, part)),
                 const SizedBox(height: 16),
@@ -123,7 +124,7 @@ class _ComfortProfilePageState extends State<ComfortProfilePage> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(
-                      '${part.label} · runs '
+                      '${part.label} · ${sport == Sport.run ? 'runs' : 'feels'} '
                       '${l.net > 0 ? 'warm' : 'cold'} ${zone.phrase}',
                     ),
                     subtitle: Text(

@@ -239,7 +239,7 @@ IconData productIcon(String category) {
       category.contains('beanie') ||
       category.contains('headband') ||
       category.contains('gaiter')) {
-    return Icons.face;
+    return Icons.face_outlined;
   }
   if (category.contains('glove') || category.contains('mitts')) {
     return Icons.back_hand;
@@ -253,7 +253,7 @@ IconData productIcon(String category) {
   if (category.contains('sock') ||
       category.contains('shoe') ||
       category.contains('toe')) {
-    return Icons.ice_skating;
+    return Icons.directions_walk;
   }
   if (category.contains('wetsuit') ||
       category.contains('trisuit') ||

@@ -304,7 +304,7 @@ void main() {
     await tester.tap(find.text('Specific date'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Vondelpark'));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Vondelpark'));
     await tester.pump();
     await tester.tap(find.text('Find race-like conditions'));
     await tester.pumpAndSettle();
@@ -362,7 +362,7 @@ void main() {
     final label = '${formatDay(start)} – ${formatDay(end)}';
     expect(find.text(label), findsOneWidget);
 
-    await tester.tap(find.text('Vondelpark'));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Vondelpark'));
     await tester.pump();
     await tester.tap(find.text('Find race-like conditions'));
     await tester.pumpAndSettle();
@@ -399,7 +399,7 @@ void main() {
     );
     await tester.tap(find.text('Match my race'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Vondelpark'));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Vondelpark'));
     await tester.pump();
     expect(
       find.textContaining(

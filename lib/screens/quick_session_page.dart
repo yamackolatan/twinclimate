@@ -44,7 +44,7 @@ class QuickSessionPage extends StatefulWidget {
 class _QuickSessionPageState extends State<QuickSessionPage> {
   late Sport _sport = widget.store.lastSport;
   Place? _place;
-  late DateTime _date = DateTime.now().add(const Duration(days: 1));
+  late DateTime _date;
   late TimeOfDay _time;
   late final Map<Sport, double> _distanceKm = {
     for (final sport in Sport.values) sport: widget.store.distanceFor(sport),
@@ -78,8 +78,16 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     super.initState();
     final (hour, minute) = widget.store.lastStartTime;
     _time = TimeOfDay(hour: hour, minute: minute);
+    // Today if the usual start time is still ahead, otherwise tomorrow.
+    final now = DateTime.now();
+    final todayAtTime = DateTime(now.year, now.month, now.day, hour, minute);
+    _date = todayAtTime.isAfter(now.add(const Duration(minutes: 30)))
+        ? DateTime(now.year, now.month, now.day)
+        : DateTime(now.year, now.month, now.day + 1);
+    // Ready to answer on the first visit: last place used, else the first
+    // quick pick.
     final saved = widget.store.savedPlaces;
-    if (saved.isNotEmpty) _place = saved.first;
+    _place = saved.isNotEmpty ? saved.first : presetPlaces.first;
     _refreshFeedback();
   }
 
@@ -100,6 +108,18 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
       );
     }
     if (mounted) setState(() => _feedbackRecord = pick.ask);
+  }
+
+  Future<void> _openPage(String choice) async {
+    if (choice == 'comfort') return _openComfortProfile();
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => choice == 'gear'
+            ? MyGearPage(store: widget.store)
+            : PartnerDemoPage(store: widget.store),
+      ),
+    );
+    if (mounted) setState(() {});
   }
 
   Future<void> _openComfortProfile() async {
@@ -128,6 +148,7 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
       context,
       weather: widget.weather,
       savedPlaces: widget.store.savedPlaces,
+      namer: widget.namer,
     );
     if (place != null) setState(() => _place = place);
   }
@@ -145,6 +166,63 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     );
     if (picked != null) setState(() => _date = picked);
   }
+
+  /// "Now": today, starting at the next quarter hour.
+  void _setNow() {
+    final now = DateTime.now().add(const Duration(minutes: 14));
+    final start = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute - now.minute % 15,
+    );
+    setState(() {
+      _date = DateTime(start.year, start.month, start.day);
+      _time = TimeOfDay(hour: start.hour, minute: start.minute);
+    });
+  }
+
+  bool _isDay(int offset) {
+    final d = _today.add(Duration(days: offset));
+    return _date.year == d.year && _date.month == d.month && _date.day == d.day;
+  }
+
+  Widget _dateChips() {
+    final other = !_isDay(0) && !_isDay(1);
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        ActionChip(
+          avatar: const Icon(Icons.bolt, size: 18),
+          label: const Text('Now'),
+          onPressed: _setNow,
+        ),
+        ChoiceChip(
+          label: const Text('Today'),
+          selected: _isDay(0),
+          onSelected: (_) => setState(() => _date = _today),
+        ),
+        ChoiceChip(
+          label: const Text('Tomorrow'),
+          selected: _isDay(1),
+          onSelected: (_) =>
+              setState(() => _date = _today.add(const Duration(days: 1))),
+        ),
+        ChoiceChip(
+          avatar: const Icon(Icons.calendar_today, size: 18),
+          label: Text(other ? formatDay(_date) : 'Other day'),
+          selected: other,
+          onSelected: (_) => _pickDate(),
+        ),
+      ],
+    );
+  }
+
+  /// The chosen start is already over (today, earlier than now).
+  bool get _startPassed =>
+      _start.isBefore(DateTime.now().subtract(const Duration(minutes: 30)));
 
   Future<void> _pickTime() async {
     final picked = await showTimePicker(context: context, initialTime: _time);
@@ -165,6 +243,17 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
           plan: plan,
           weather: widget.weather,
           store: widget.store,
+          onPlanChanged: (moved) => setState(() {
+            _date = DateTime(
+              moved.start.year,
+              moved.start.month,
+              moved.start.day,
+            );
+            _time = TimeOfDay(
+              hour: moved.start.hour,
+              minute: moved.start.minute,
+            );
+          }),
         ),
       ),
     );
@@ -223,13 +312,21 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.terrain),
-            SizedBox(width: 8),
-            Text('TwinClimate', style: TextStyle(fontWeight: FontWeight.w700)),
-          ],
+        // Long-press the name for the Partner demo (for pitches; hidden
+        // from everyday users).
+        title: GestureDetector(
+          onLongPress: () => _openPage('partner'),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.terrain),
+              SizedBox(width: 8),
+              Text(
+                'TwinClimate',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
         ),
         actions: [
           IconButton(
@@ -239,29 +336,20 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
           ),
           PopupMenuButton<String>(
             tooltip: 'More',
-            onSelected: (choice) async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => choice == 'gear'
-                      ? MyGearPage(store: widget.store)
-                      : PartnerDemoPage(store: widget.store),
-                ),
-              );
-              if (mounted) setState(() {});
-            },
+            onSelected: _openPage,
             itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'comfort',
+                child: ListTile(
+                  leading: Icon(Icons.accessibility_new),
+                  title: Text('Comfort profile'),
+                ),
+              ),
               PopupMenuItem(
                 value: 'gear',
                 child: ListTile(
                   leading: Icon(Icons.backpack_outlined),
                   title: Text('My gear & shopping'),
-                ),
-              ),
-              PopupMenuItem(
-                value: 'partner',
-                child: ListTile(
-                  leading: Icon(Icons.insights),
-                  title: Text('Partner demo'),
                 ),
               ),
             ],
@@ -287,12 +375,6 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  RacesSection(
-                    store: widget.store,
-                    weather: widget.weather,
-                    onChanged: () => setState(() {}),
-                  ),
-                  const SizedBox(height: 24),
                   if (_races.isNotEmpty) ...[
                     SegmentedButton<bool>(
                       segments: const [
@@ -405,27 +487,30 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
 
                   if (matching) ..._matchOptions(muted),
                   // Date & time
-                  if (!matching)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _pickerTile(
-                            icon: Icons.calendar_today,
-                            label: formatDay(_date),
-                            onTap: _pickDate,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _pickerTile(
-                            icon: Icons.schedule,
-                            label:
-                                '${_time.hour.toString().padLeft(2, '0')}:${_time.minute.toString().padLeft(2, '0')}',
-                            onTap: _pickTime,
-                          ),
-                        ),
-                      ],
+                  if (!matching) ...[
+                    const SizedBox(height: 4),
+                    _dateChips(),
+                    const SizedBox(height: 8),
+                    _pickerTile(
+                      icon: Icons.schedule,
+                      label:
+                          '${formatDay(_date)}, start '
+                          '${_time.hour.toString().padLeft(2, '0')}:'
+                          '${_time.minute.toString().padLeft(2, '0')}',
+                      onTap: _pickTime,
                     ),
+                    if (_startPassed)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'That start time has already passed today — tap '
+                          'Now or pick a later time.',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                  ],
                   if (!matching && beyondForecast(_date, DateTime.now()))
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
@@ -524,6 +609,12 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                         ),
                       ),
                     ),
+                  const SizedBox(height: 32),
+                  RacesSection(
+                    store: widget.store,
+                    weather: widget.weather,
+                    onChanged: () => setState(() {}),
+                  ),
                 ],
               ),
             ),

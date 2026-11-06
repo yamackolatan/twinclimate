@@ -30,7 +30,7 @@ class _MyGearPageState extends State<MyGearPage> {
             (productCategories[a] ?? a).compareTo(productCategories[b] ?? b),
       );
     return Scaffold(
-      appBar: AppBar(title: const Text('My gear')),
+      appBar: AppBar(title: const Text('My gear & shopping')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

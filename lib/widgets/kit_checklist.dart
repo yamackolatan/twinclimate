@@ -64,6 +64,7 @@ class _KitChecklistState extends State<KitChecklist> {
     final packed = _packed.length;
     final allPacked = total > 0 && packed == total;
     final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -71,21 +72,26 @@ class _KitChecklistState extends State<KitChecklist> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Your kit', style: Theme.of(context).textTheme.titleLarge),
+            Text('Your kit', style: text.titleLarge),
             Text(
               '$packed / $total packed',
-              style: Theme.of(
-                context,
-              ).textTheme.labelLarge?.copyWith(color: scheme.onSurfaceVariant),
+              style: text.labelLarge?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: total == 0 ? 0 : packed / total,
+            minHeight: 6,
+            backgroundColor: scheme.surfaceContainerHighest,
+          ),
+        ),
+        const SizedBox(height: 6),
         Text(
           'Tap items as you pack them.',
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
         ),
         const SizedBox(height: 8),
         if (allPacked)
@@ -113,138 +119,187 @@ class _KitChecklistState extends State<KitChecklist> {
             ),
           ),
         for (final part in BodyPart.values) ...[
-          _sectionHeader(context, part),
-          if (grouped[part]!.isEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-              child: Text(
-                'Nothing extra needed here.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            )
-          else
-            for (final item in grouped[part]!) _itemTile(context, item),
+          _sectionHeader(context, part, grouped[part]!.length),
+          for (final item in grouped[part]!) _itemTile(context, item),
         ],
       ],
     );
   }
 
-  Widget _sectionHeader(BuildContext context, BodyPart part) => Padding(
-    padding: const EdgeInsets.fromLTRB(0, 14, 0, 6),
-    child: Text(
-      part.label.toUpperCase(),
-      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-        letterSpacing: 1.2,
-        color: Theme.of(context).colorScheme.primary,
-        fontWeight: FontWeight.w700,
+  static const _partIcons = {
+    BodyPart.head: Icons.face_outlined,
+    BodyPart.torso: Icons.checkroom,
+    BodyPart.hands: Icons.back_hand_outlined,
+    BodyPart.legs: Icons.airline_seat_legroom_extra,
+    BodyPart.feet: Icons.directions_walk,
+  };
+
+  /// Section header; an empty part is a single quiet line.
+  Widget _sectionHeader(BuildContext context, BodyPart part, int count) {
+    final scheme = Theme.of(context).colorScheme;
+    final empty = count == 0;
+    final color = empty ? scheme.onSurfaceVariant : scheme.primary;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(0, empty ? 10 : 16, 0, empty ? 2 : 6),
+      child: Row(
+        children: [
+          Icon(_partIcons[part], size: 18, color: color),
+          const SizedBox(width: 8),
+          Text(
+            part.label.toUpperCase(),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              letterSpacing: 1.2,
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            empty ? '· nothing extra needed' : '· $count',
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ],
       ),
-    ),
-  );
+    );
+  }
 
   Widget _itemTile(BuildContext context, GearItem item) {
     final scheme = Theme.of(context).colorScheme;
     final isPacked = _packedNames.contains(item.name);
-    final highlighted = item.trigger != GearTrigger.none;
+    final accent = triggerColor(item.trigger, scheme.brightness);
+    final shop = widget.onShop != null && widget.shopItems.contains(item);
 
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 6),
-      color: highlighted
-          ? scheme.tertiaryContainer
+      color: isPacked
+          ? scheme.surfaceContainerHighest
           : scheme.surfaceContainerLow,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _toggle(item),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                isPacked ? Icons.check_circle : Icons.radio_button_unchecked,
-                color: isPacked ? scheme.primary : scheme.outline,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: accent == null
+            ? BorderSide.none
+            : BorderSide(color: accent.withValues(alpha: 0.7), width: 1.5),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            checked: isPacked,
+            button: true,
+            label:
+                '${item.name}${item.optional ? ', optional' : ''}. '
+                '${item.reason}',
+            excludeSemantics: true,
+            child: InkWell(
+              onTap: () => _toggle(item),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(12, 10, 12, shop ? 4 : 10),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            item.name,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              decoration: isPacked
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                            ),
-                          ),
-                        ),
-                        if (item.trigger == GearTrigger.rain) ...[
-                          const SizedBox(width: 6),
-                          const Icon(Icons.umbrella, size: 16),
-                        ],
-                        if (item.trigger == GearTrigger.wind) ...[
-                          const SizedBox(width: 6),
-                          const Icon(Icons.air, size: 16),
-                        ],
-                        if (item.optional) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 1,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: scheme.outline),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'optional',
-                              style: Theme.of(context).textTheme.labelSmall,
-                            ),
-                          ),
-                        ],
-                      ],
+                    Icon(
+                      isPacked
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: isPacked ? scheme.primary : scheme.outline,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.reason,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                item.name,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  decoration: isPacked
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
+                              ),
+                              if (accent != null)
+                                _tag(
+                                  context,
+                                  item.trigger == GearTrigger.rain
+                                      ? 'for the rain'
+                                      : 'for the wind',
+                                  item.trigger == GearTrigger.rain
+                                      ? Icons.umbrella
+                                      : Icons.air,
+                                  accent,
+                                ),
+                              if (item.optional)
+                                _tag(context, 'optional', null, scheme.outline),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.reason,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
+                        ],
                       ),
                     ),
-                    if (widget.onShop != null &&
-                        widget.shopItems.contains(item))
-                      _shopLink(context, item),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+          if (shop) _shopLink(context, item),
+        ],
+      ),
+    );
+  }
+
+  Widget _tag(BuildContext context, String label, IconData? icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color.withValues(alpha: 0.6)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: color),
+          ),
+        ],
       ),
     );
   }
 
   Widget _shopLink(BuildContext context, GearItem item) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: () => widget.onShop!(item),
+    return InkWell(
+      onTap: () => widget.onShop!(item),
+      child: ConstrainedBox(
+        // A full-size tap target, separate from ticking the item.
+        constraints: const BoxConstraints(minHeight: 44),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.fromLTRB(48, 0, 12, 4),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.storefront_outlined, size: 16, color: scheme.primary),
-              const SizedBox(width: 4),
+              const SizedBox(width: 6),
               Flexible(
                 child: Text(
                   widget.ownedShopItems.contains(item)
@@ -261,4 +316,17 @@ class _KitChecklistState extends State<KitChecklist> {
       ),
     );
   }
+}
+
+/// Accent colour for rain- and wind-driven items (null for the rest):
+/// blue for rain, violet for wind — distinct from the app's other notes.
+Color? triggerColor(GearTrigger trigger, Brightness brightness) {
+  final dark = brightness == Brightness.dark;
+  return switch (trigger) {
+    GearTrigger.rain =>
+      dark ? const Color(0xFF8DB8FF) : const Color(0xFF1F5FBF),
+    GearTrigger.wind =>
+      dark ? const Color(0xFFC9A7FF) : const Color(0xFF6B3FB0),
+    GearTrigger.none => null,
+  };
 }

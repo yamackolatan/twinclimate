@@ -74,7 +74,8 @@ class _RacesSectionState extends State<RacesSection> {
           leading: const Icon(Icons.emoji_events_outlined),
           title: const Text('Training for a race?'),
           subtitle: const Text(
-            'Optional: add it to see its typical race-day weather.',
+            'Optional: see its typical race-day weather, and find where and '
+            'when near you training feels like race day.',
           ),
           trailing: const Icon(Icons.add),
           onTap: _add,

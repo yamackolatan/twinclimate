@@ -63,8 +63,13 @@ class _ComfortProfilePageState extends State<ComfortProfilePage> {
             tabs: [for (final sport in Sport.values) Tab(text: sport.label)],
           ),
         ),
-        body: TabBarView(
-          children: [for (final sport in Sport.values) _sportTab(sport)],
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: TabBarView(
+              children: [for (final sport in Sport.values) _sportTab(sport)],
+            ),
+          ),
         ),
       ),
     );

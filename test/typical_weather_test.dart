@@ -222,7 +222,7 @@ void main() {
       find.textContaining('Typical weather, not a forecast'),
       findsOneWidget,
     );
-    expect(find.textContaining('Typically feels like'), findsOneWidget);
+    expect(find.textContaining('typically feels'), findsOneWidget);
     expect(
       find.textContaining(
         'The real forecast is available from ${formatDay(start.subtract(const Duration(days: 15)))}',

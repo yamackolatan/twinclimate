@@ -3,9 +3,9 @@
     "short_name": "TwinClimate",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Compare city climates and find your climate twin.",
+    "background_color": "#F4FBFA",
+    "theme_color": "#00696D",
+    "description": "What will training feel like, and what should you wear? Session weather and kit advice for runners, cyclists and swimmers.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

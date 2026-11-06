@@ -110,7 +110,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // Result screen: summary, hourly cards and the five kit sections.
-    expect(find.text('Feels like 14° at the start'), findsOneWidget);
+    expect(find.text('14°'), findsOneWidget);
+    expect(find.text('feels like\nat the start'), findsOneWidget);
+    expect(find.text('Cool and wet — pack the rain jacket'), findsOneWidget);
     for (final section in ['HEAD', 'TORSO', 'HANDS', 'LEGS', 'FEET']) {
       expect(find.text(section), findsOneWidget, reason: 'missing $section');
     }

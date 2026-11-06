@@ -43,86 +43,91 @@ class _PartnerDemoPageState extends State<PartnerDemoPage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Partner demo')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            'How shopping suggestions perform',
-            style: theme.textTheme.titleLarge,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Counted on this device only, no personal data. In a partner '
-            'version these numbers would come from all users.',
-            style: muted,
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
             children: [
-              _Tile('Suggestions shown', '$shown'),
-              _Tile('Opened', '$opened'),
-              _Tile('Clicks to shop', '$clicked'),
-              _Tile('"Already have it"', '$owned'),
-              _Tile(
-                'Shown → shop',
-                shown == 0 ? '–' : '${(100 * clicked / shown).round()}%',
+              Text(
+                'How shopping suggestions perform',
+                style: theme.textTheme.titleLarge,
               ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Text('Most opened needs', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 4),
-          ..._rows(
-            top('opened'),
-            (key) => key == 'race_kit'
-                ? 'Race-day kit'
-                : _capitalised(productCategories[key] ?? key),
-            muted,
-          ),
-          const SizedBox(height: 16),
-          Text('Most clicked products', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 4),
-          ..._rows(top('clicked'), (id) => products[id]?.name ?? id, muted),
-          const SizedBox(height: 24),
-          Card(
-            elevation: 0,
-            color: theme.colorScheme.secondaryContainer,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 4),
+              Text(
+                'Counted on this device only, no personal data. In a partner '
+                'version these numbers would come from all users.',
+                style: muted,
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  Text('How it works', style: theme.textTheme.titleSmall),
-                  const SizedBox(height: 6),
-                  Text(
-                    '• Products are matched to the kit the weather calls for '
-                    '(type and function), with the reason shown.\n'
-                    '• At most 3 links per kit list, rain/wind gear first; '
-                    'for gear the user has, the link offers other models.\n'
-                    '• Race-day picks are the best-rated sellers for the '
-                    'race\'s typical weather.\n'
-                    '• Demo catalogue: ${decathlonCatalogue.length} '
-                    'decathlon.nl products in ${categories.length} types, '
-                    'prices and ratings as listed in $catalogueDate.\n'
-                    '• Links are plain shop links today; a partner '
-                    'version would add affiliate tracking.',
+                  _Tile('Suggestions shown', '$shown'),
+                  _Tile('Opened', '$opened'),
+                  _Tile('Clicks to shop', '$clicked'),
+                  _Tile('"Already have it"', '$owned'),
+                  _Tile(
+                    'Shown → shop',
+                    shown == 0 ? '–' : '${(100 * clicked / shown).round()}%',
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 24),
+              Text('Most opened needs', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 4),
+              ..._rows(
+                top('opened'),
+                (key) => key == 'race_kit'
+                    ? 'Race-day kit'
+                    : _capitalised(productCategories[key] ?? key),
+                muted,
+              ),
+              const SizedBox(height: 16),
+              Text('Most clicked products', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 4),
+              ..._rows(top('clicked'), (id) => products[id]?.name ?? id, muted),
+              const SizedBox(height: 24),
+              Card(
+                elevation: 0,
+                color: theme.colorScheme.secondaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('How it works', style: theme.textTheme.titleSmall),
+                      const SizedBox(height: 6),
+                      Text(
+                        '• Products are matched to the kit the weather calls for '
+                        '(type and function), with the reason shown.\n'
+                        '• At most 3 links per kit list, rain/wind gear first; '
+                        'for gear the user has, the link offers other models.\n'
+                        '• Race-day picks are the best-rated sellers for the '
+                        'race\'s typical weather.\n'
+                        '• Demo catalogue: ${decathlonCatalogue.length} '
+                        'decathlon.nl products in ${categories.length} types, '
+                        'prices and ratings as listed in $catalogueDate.\n'
+                        '• Links are plain shop links today; a partner '
+                        'version would add affiliate tracking.',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  await widget.store.resetShopStats();
+                  setState(() {});
+                },
+                icon: const Icon(Icons.restart_alt),
+                label: const Text('Reset counters'),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: () async {
-              await widget.store.resetShopStats();
-              setState(() {});
-            },
-            icon: const Icon(Icons.restart_alt),
-            label: const Text('Reset counters'),
-          ),
-        ],
+        ),
       ),
     );
   }

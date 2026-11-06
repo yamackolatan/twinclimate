@@ -112,3 +112,42 @@ String windPhraseWithDirection(
       ? '$base from the $dir'
       : '${base.substring(0, gust)} from the $dir${base.substring(gust)}';
 }
+
+/// One plain line that sums the session up: "Cold and breezy — layer up".
+/// [feelsC] is the felt temperature used for kit (sun and wet included).
+String sessionVerdict({
+  required double feelsC,
+  required bool wet,
+  required bool windy,
+}) {
+  final String feel;
+  final String advice;
+  if (feelsC < 0) {
+    feel = 'Freezing';
+    advice = 'full winter kit';
+  } else if (feelsC < 7) {
+    feel = 'Cold';
+    advice = 'layer up';
+  } else if (feelsC < 13) {
+    feel = 'Cool';
+    advice = 'long sleeves weather';
+  } else if (feelsC < 20) {
+    feel = 'Mild';
+    advice = 'light layers';
+  } else if (feelsC < 25) {
+    feel = 'Warm';
+    advice = 'dress light';
+  } else {
+    feel = 'Hot';
+    advice = 'go light and drink plenty';
+  }
+  final extra = wet && windy
+      ? ', wet and windy'
+      : wet
+      ? ' and wet'
+      : windy
+      ? ' and windy'
+      : '';
+  final rainAdvice = wet ? ' — pack the rain jacket' : ' — $advice';
+  return '$feel$extra$rainAdvice';
+}

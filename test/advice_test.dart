@@ -191,6 +191,21 @@ void main() {
     });
   });
 
+  test('one-line verdict', () {
+    expect(
+      sessionVerdict(feelsC: 3, wet: false, windy: true),
+      'Cold and windy — layer up',
+    );
+    expect(
+      sessionVerdict(feelsC: 22, wet: false, windy: false),
+      'Warm — dress light',
+    );
+    expect(
+      sessionVerdict(feelsC: 15, wet: true, windy: true),
+      'Mild, wet and windy — pack the rain jacket',
+    );
+  });
+
   test('wind direction wording', () {
     expect(compassPoint(225), 'SW');
     expect(compassPoint(359), 'N');

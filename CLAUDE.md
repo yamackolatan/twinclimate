@@ -371,6 +371,39 @@ Replaced by the two shopping features (F5a, F5b) below.
   tests in `test/shop_test.dart` (every kit item must be mapped or listed
   in `noShopItems`).
 
+### App review improvements (owner-approved, Nov 2026 — build to these)
+- **Bugs fixed:** packing ticks tracked by item name (survive redraws);
+  forecast hours without a temperature are skipped (never read as 0 °C);
+  history downloads run one year at a time and wait once (~65 s) on the
+  per-minute limit; race-day kit uses only the race's own sports;
+  comparing start times for one day/sport replaces the earlier untouched
+  session record.
+- **Ease of use:** first visit pre-picks the last place or Vondelpark;
+  date defaults to today if the usual start time is ≥30 min ahead, else
+  tomorrow; Now / Today / Tomorrow / Other day chips; session form first,
+  races below; "Use my location" (browser geolocation + Nominatim name);
+  result screen has Share (Web Share API, clipboard fallback), Change,
+  and 1 h earlier/later; Partner demo is opened by long-pressing the
+  TwinClimate name (removed from the menu); Comfort profile also in ⋮.
+- **More advice (all with reasons):** dark sessions (before sunrise /
+  after sunset from Open-Meteo `daily=sunrise,sunset`, else `is_day`) →
+  headlamp + reflective vest (run), front/rear lights (bike, legally
+  required after dark), lit tow float (swim); sunscreen at UV ≥ 3
+  (`uv_index`); water from 1 h (or 30 min when kit-feels ≥ 22 °C),
+  electrolytes from 1.5 h at ≥ 20 °C, gel/snack from 1.5 h; wind
+  direction (`wind_direction_10m`) in summary and hour cards, bike tip to
+  ride out into the wind; "Better at HH:MM" hint scans ±4 h the same day
+  (`lib/logic/best_time.dart`); Swim has Open water / Pool (pool kit, no
+  neoprene); optional personal pace per sport (`formatPace`,
+  `paceChoices`). Lights/reflective gear have no shop link (not in the
+  catalogue — never invent products).
+- **Look:** `lib/theme.dart` (AppTheme, `feelGradient`); colour headline
+  card by felt temperature with a one-line verdict (`sessionVerdict`);
+  hour timeline card with rain bars; kit rows tag rain (blue) / wind
+  (violet), packing progress bar, per-part icon + count, empty parts on
+  one line; two columns on screens ≥ 1000 px; 640 px max width on all
+  pages; web manifest/description updated.
+
 ### Later phases (do NOT start without the owner asking)
 - V2: exact route suggestions (OSM/Overpass + loop generation, elevation,
   surface), cycling-specific matching, Turkish localization.

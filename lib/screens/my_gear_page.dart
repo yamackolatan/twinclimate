@@ -31,51 +31,56 @@ class _MyGearPageState extends State<MyGearPage> {
       );
     return Scaffold(
       appBar: AppBar(title: const Text('My gear & shopping')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Shopping suggestions'),
-            subtitle: const Text(
-              'Show "Don\'t have one?" links to Decathlon next to your kit '
-              'and race-day picks.',
-            ),
-            value: store.shopSuggestionsOn,
-            onChanged: (on) async {
-              await store.setShopSuggestionsOn(on);
-              setState(() {});
-            },
-          ),
-          const Divider(height: 32),
-          Text('Gear you have', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text(
-            'Added when you tap "I already have this" or tick an item while '
-            'packing. Their shop links stay, showing other models.',
-            style: muted,
-          ),
-          const SizedBox(height: 8),
-          if (owned.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text('Nothing yet.', style: muted),
-            ),
-          for (final type in owned)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(productIcon(type)),
-              title: Text(_capitalised(productCategories[type] ?? type)),
-              trailing: IconButton(
-                tooltip: 'Remove',
-                icon: const Icon(Icons.close),
-                onPressed: () async {
-                  await store.unmarkOwned(type);
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Shopping suggestions'),
+                subtitle: const Text(
+                  'Show "Don\'t have one?" links to Decathlon next to your kit '
+                  'and race-day picks.',
+                ),
+                value: store.shopSuggestionsOn,
+                onChanged: (on) async {
+                  await store.setShopSuggestionsOn(on);
                   setState(() {});
                 },
               ),
-            ),
-        ],
+              const Divider(height: 32),
+              Text('Gear you have', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 4),
+              Text(
+                'Added when you tap "I already have this" or tick an item while '
+                'packing. Their shop links stay, showing other models.',
+                style: muted,
+              ),
+              const SizedBox(height: 8),
+              if (owned.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text('Nothing yet.', style: muted),
+                ),
+              for (final type in owned)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(productIcon(type)),
+                  title: Text(_capitalised(productCategories[type] ?? type)),
+                  trailing: IconButton(
+                    tooltip: 'Remove',
+                    icon: const Icon(Icons.close),
+                    onPressed: () async {
+                      await store.unmarkOwned(type);
+                      setState(() {});
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

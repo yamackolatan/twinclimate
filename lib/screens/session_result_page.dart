@@ -15,6 +15,7 @@ import '../services/device_services.dart';
 import '../services/prefs_store.dart';
 import '../services/typical_weather_service.dart';
 import '../services/weather_service.dart';
+import '../theme.dart';
 import '../widgets/hour_cards.dart';
 import '../widgets/kit_checklist.dart';
 import '../widgets/product_sheet.dart';
@@ -228,7 +229,6 @@ class _SessionResultPageState extends State<SessionResultPage> {
     final plan = widget.plan;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
         title: Text(plan.place.name),
         actions: [
           IconButton(
@@ -298,7 +298,6 @@ class _SessionResultPageState extends State<SessionResultPage> {
       comfort: widget.store?.comfortProfile,
     );
     final scheme = Theme.of(context).colorScheme;
-    final start = forecast.atStart;
     final shopItems = _shopItems(kit);
     _shown = forecast;
     final now = DateTime.now();
@@ -306,181 +305,218 @@ class _SessionResultPageState extends State<SessionResultPage> {
         .subtract(const Duration(hours: 1))
         .isAfter(now.subtract(const Duration(minutes: 30)));
 
-    return SingleChildScrollView(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // What was asked for.
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _chip(context, Icons.flag, plan.sport.label),
-                    _chip(context, Icons.calendar_today, formatDay(plan.start)),
-                    _chip(context, Icons.schedule, plan.windowLabel),
-                    _chip(context, Icons.route, plan.distanceLabel),
-                  ],
-                ),
-                if (_typical != null) ...[
-                  const SizedBox(height: 12),
-                  _typicalBanner(context, _typical!),
-                ],
-                const SizedBox(height: 16),
-
-                // Summary: feels-like at start + sky + humidity + wind.
-                Card(
-                  elevation: 0,
-                  color: scheme.primaryContainer,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Icon(
-                          weatherIcon(start.weatherCode, isDay: start.isDay),
-                          size: 44,
-                          color: scheme.onPrimaryContainer,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _typical == null
-                                    ? 'Feels like ${start.apparentC.round()}° at the start'
-                                    : 'Typically feels like ${start.apparentC.round()}° at the start',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      color: scheme.onPrimaryContainer,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${weatherDescription(start.weatherCode)} · '
-                                '${start.humidityPercent.round()}% humidity · '
-                                '${windPhraseWithDirection(forecast.maxWindKmh, forecast.maxGustKmh, forecast.windFromDeg)}',
-                                style: TextStyle(
-                                  color: scheme.onPrimaryContainer,
-                                ),
-                              ),
-                              if (forecast.sunrise != null &&
-                                  forecast.sunset != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Sunrise ${formatTime(forecast.sunrise!)} · '
-                                  'sunset ${formatTime(forecast.sunset!)}',
-                                  style: TextStyle(
-                                    color: scheme.onPrimaryContainer,
-                                  ),
-                                ),
-                              ],
-                              if (plan.sport == Sport.bike &&
-                                  forecast.windy &&
-                                  forecast.windFromDeg != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Tip: ride out into the wind (head '
-                                  '${compassPoint(forecast.windFromDeg!)}) so '
-                                  'it pushes you home when you\'re tired.',
-                                  style: TextStyle(
-                                    color: scheme.onPrimaryContainer,
-                                  ),
-                                ),
-                              ],
-                              if (forecast.rainLikely) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Rain chance up to ${forecast.maxPrecipProbabilityPercent.round()}% during your session.',
-                                  style: TextStyle(
-                                    color: scheme.onPrimaryContainer,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                Text(
-                  'Hour by hour',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                HourCards(hours: forecast.hours),
-                const SizedBox(height: 8),
-                if (_typical == null) _betterTimeHint(context, forecast),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: canGoEarlier ? () => _shift(-1) : null,
-                        icon: const Icon(Icons.chevron_left),
-                        label: const Text('1 h earlier'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _shift(1),
-                        icon: const Icon(Icons.chevron_right),
-                        label: const Text('1 h later'),
-                        iconAlignment: IconAlignment.end,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                KitChecklist(
-                  items: kit,
-                  initialPacked: _savedPacked,
-                  onPackedChanged: _onPacked,
-                  shopItems: shopItems,
-                  ownedShopItems: {
-                    for (final item in shopItems)
-                      if (ownsItem(item, widget.store!.ownedTypes)) item,
-                  },
-                  onShop: _openShop,
-                ),
-                if (shopItems.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    shopDisclosure,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-                const SizedBox(height: 24),
-
-                Text(
-                  '${_typical == null ? 'Forecast' : 'Typical weather from recorded history (ERA5)'} '
-                  'by Open-Meteo for the exact coordinates of '
-                  '${plan.place.name} '
-                  '(${plan.place.latitude.toStringAsFixed(3)}, '
-                  '${plan.place.longitude.toStringAsFixed(3)}), local time.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-              ],
+    final weatherColumn = <Widget>[
+      _hero(context, forecast),
+      if (_typical != null) ...[
+        const SizedBox(height: 12),
+        _typicalBanner(context, _typical!),
+      ],
+      const SizedBox(height: 20),
+      Text('Hour by hour', style: Theme.of(context).textTheme.titleLarge),
+      const SizedBox(height: 8),
+      HourCards(hours: forecast.hours),
+      const SizedBox(height: 8),
+      if (_typical == null) _betterTimeHint(context, forecast),
+      Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: canGoEarlier ? () => _shift(-1) : null,
+              icon: const Icon(Icons.chevron_left),
+              label: const Text('1 h earlier'),
             ),
           ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => _shift(1),
+              icon: const Icon(Icons.chevron_right),
+              label: const Text('1 h later'),
+              iconAlignment: IconAlignment.end,
+            ),
+          ),
+        ],
+      ),
+    ];
+    final kitColumn = <Widget>[
+      KitChecklist(
+        items: kit,
+        initialPacked: _savedPacked,
+        onPackedChanged: _onPacked,
+        shopItems: shopItems,
+        ownedShopItems: {
+          for (final item in shopItems)
+            if (ownsItem(item, widget.store!.ownedTypes)) item,
+        },
+        onShop: _openShop,
+      ),
+      if (shopItems.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text(
+          shopDisclosure,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          textAlign: TextAlign.center,
         ),
+      ],
+    ];
+    final footer = Text(
+      '${_typical == null ? 'Forecast' : 'Typical weather from recorded history (ERA5)'} '
+      'by Open-Meteo for the exact coordinates of '
+      '${plan.place.name} '
+      '(${plan.place.latitude.toStringAsFixed(3)}, '
+      '${plan.place.longitude.toStringAsFixed(3)}), local time.',
+      style: Theme.of(
+        context,
+      ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+      textAlign: TextAlign.center,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Wide screens: weather on the left, kit on the right.
+        final wide = constraints.maxWidth >= 1000;
+        final body = wide
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: weatherColumn,
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: kitColumn,
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ...weatherColumn,
+                  const SizedBox(height: 24),
+                  ...kitColumn,
+                ],
+              );
+        return SingleChildScrollView(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: wide ? 1200 : 640),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    body,
+                    const SizedBox(height: 24),
+                    footer,
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// The headline card: what was asked, how it will feel, one verdict.
+  Widget _hero(BuildContext context, SessionForecast forecast) {
+    final plan = widget.plan;
+    final start = forecast.atStart;
+    final text = Theme.of(context).textTheme;
+    const onHero = Colors.white;
+    final soft = Colors.white.withValues(alpha: 0.85);
+    final colors = feelGradient(
+      forecast.kitFeelsC,
+      Theme.of(context).brightness,
+    );
+    final details = <String>[
+      '${weatherDescription(start.weatherCode)} · '
+          '${start.humidityPercent.round()}% humidity · '
+          '${windPhraseWithDirection(forecast.maxWindKmh, forecast.maxGustKmh, forecast.windFromDeg)}',
+      if (forecast.rainLikely)
+        'Rain chance up to ${forecast.maxPrecipProbabilityPercent.round()}% '
+            'during your session.',
+      if (forecast.sunrise != null && forecast.sunset != null)
+        'Sunrise ${formatTime(forecast.sunrise!)} · '
+            'sunset ${formatTime(forecast.sunset!)}',
+      if (plan.sport == Sport.bike &&
+          forecast.windy &&
+          forecast.windFromDeg != null)
+        'Tip: ride out into the wind (head '
+            '${compassPoint(forecast.windFromDeg!)}) so it pushes you home '
+            'when you\'re tired.',
+    ];
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: colors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${plan.sport.label} · ${plan.distanceLabel}'
+            '${plan.pool ? ' · pool' : ''} · ${formatDay(plan.start)} · '
+            '${plan.windowLabel}',
+            style: text.labelLarge?.copyWith(color: soft),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                weatherIcon(start.weatherCode, isDay: start.isDay),
+                size: 56,
+                color: onHero,
+              ),
+              const SizedBox(width: 16),
+              Text(
+                '${start.apparentC.round()}°',
+                style: text.displayMedium?.copyWith(
+                  color: onHero,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _typical == null
+                      ? 'feels like\nat the start'
+                      : 'typically feels\nlike at the start',
+                  style: text.titleSmall?.copyWith(color: soft),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            sessionVerdict(
+              feelsC: forecast.kitFeelsC,
+              wet: forecast.rainLikely,
+              windy: forecast.windy,
+            ),
+            style: text.titleLarge?.copyWith(color: onHero),
+          ),
+          const SizedBox(height: 6),
+          for (final line in details)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(line, style: text.bodyMedium?.copyWith(color: soft)),
+            ),
+        ],
       ),
     );
   }
@@ -549,25 +585,6 @@ class _SessionResultPageState extends State<SessionResultPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _chip(BuildContext context, IconData icon, String label) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: scheme.onSurfaceVariant),
-          const SizedBox(width: 6),
-          Text(label, style: Theme.of(context).textTheme.labelLarge),
-        ],
       ),
     );
   }

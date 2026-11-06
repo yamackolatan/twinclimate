@@ -389,7 +389,6 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     final quickPicks = [...presetPlaces, ...widget.store.savedPlaces];
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
         // Long-press the name for the Partner demo (for pitches; hidden
         // from everyday users).
         title: GestureDetector(
@@ -473,46 +472,22 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  Text(
-                    matching ? 'Match my race' : 'Quick Session',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    matching
-                        ? 'Where and when, near you, will training feel most '
-                              'like race day?'
-                        : 'Where and when are you training? We\'ll tell you '
-                              'what it\'ll be like and what to wear.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+                  _header(matching),
                   const SizedBox(height: 20),
                   if (matching) ..._racePicker(),
 
                   // Sport
-                  SegmentedButton<Sport>(
-                    segments: const [
-                      ButtonSegment(
-                        value: Sport.run,
-                        label: Text('Run'),
-                        icon: Icon(Icons.directions_run),
-                      ),
-                      ButtonSegment(
-                        value: Sport.bike,
-                        label: Text('Bike'),
-                        icon: Icon(Icons.directions_bike),
-                      ),
-                      ButtonSegment(
-                        value: Sport.swim,
-                        label: Text('Swim'),
-                        icon: Icon(Icons.pool),
-                      ),
+                  Row(
+                    children: [
+                      for (final (sport, icon) in const [
+                        (Sport.run, Icons.directions_run),
+                        (Sport.bike, Icons.directions_bike),
+                        (Sport.swim, Icons.pool),
+                      ]) ...[
+                        if (sport != Sport.run) const SizedBox(width: 8),
+                        Expanded(child: _sportTile(sport, icon)),
+                      ],
                     ],
-                    selected: {_sport},
-                    onSelectionChanged: (selection) =>
-                        setState(() => _sport = selection.first),
                   ),
                   if (_sport == Sport.swim && !matching) ...[
                     const SizedBox(height: 8),
@@ -969,6 +944,95 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
       from
           ? _window.copyWith(fromMinutes: value)
           : _window.copyWith(untilMinutes: value),
+    );
+  }
+
+  String get _greeting {
+    final hour = DateTime.now().hour;
+    if (hour < 5) return 'Good night';
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  Widget _header(bool matching) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [scheme.primaryContainer, scheme.secondaryContainer],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            matching ? 'Match my race' : 'Quick Session',
+            style: text.labelLarge?.copyWith(
+              color: scheme.onPrimaryContainer,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            matching ? 'Train in race-day weather' : '$_greeting!',
+            style: text.headlineSmall?.copyWith(
+              color: scheme.onPrimaryContainer,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            matching
+                ? 'Where and when, near you, will training feel most like '
+                      'race day?'
+                : 'Where and when are you training? We\'ll tell you what '
+                      'it\'ll be like and what to wear.',
+            style: text.bodyMedium?.copyWith(color: scheme.onPrimaryContainer),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sportTile(Sport sport, IconData icon) {
+    final scheme = Theme.of(context).colorScheme;
+    final selected = _sport == sport;
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: Material(
+        color: selected ? scheme.primary : scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => setState(() => _sport = sport),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Column(
+              children: [
+                Icon(
+                  icon,
+                  size: 30,
+                  color: selected ? scheme.onPrimary : scheme.primary,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  sport.label,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: selected ? scheme.onPrimary : scheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'screens/quick_session_page.dart';
 import 'services/prefs_store.dart';
 import 'services/weather_service.dart';
+import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,21 +17,13 @@ class TwinClimateApp extends StatelessWidget {
   final PrefsStore store;
   final WeatherService weather;
 
-  static const _seedColor = Color(0xFF00696D);
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'TwinClimate',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: _seedColor,
-        brightness: Brightness.light,
-      ),
-      darkTheme: ThemeData(
-        colorSchemeSeed: _seedColor,
-        brightness: Brightness.dark,
-      ),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
       home: QuickSessionPage(store: store, weather: weather),
     );

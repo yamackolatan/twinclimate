@@ -8,10 +8,11 @@
 - Explain what you're doing in simple terms. Never assume he reads code.
   When he must act (clicking something, approving a dialog), give exact,
   numbered steps.
-- The owner works **in a web browser only** (cloud Claude Code sessions, code
-  hosted on GitHub). He has no personal computer and cannot install software.
-  Therefore: the app MUST always be runnable as a **Flutter web preview** he
-  can open in his browser. Never break web support. Phone builds come later
+- The owner mostly works **in a web browser** (cloud Claude Code sessions,
+  code hosted on GitHub). Since Nov 2026 he also has a **Mac laptop** (Xcode
+  can be installed for iPhone builds), but keep every step doable without
+  it. The app MUST always be runnable as a **Flutter web preview** he can
+  open in his browser. Never break web support. Phone builds come later
   via a cloud build service (Codemagic), not via a local machine.
 - **Do not invent scope or skip scope.** This file is the single source of
   truth. The full PRD is in `docs/PRD.md`. If the current code does not match

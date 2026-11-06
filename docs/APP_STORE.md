@@ -3,8 +3,9 @@
 Everything inside the code is ready: the iPhone project, app icon, privacy
 policy, permissions, Apple's privacy file and a cloud build recipe
 (`codemagic.yaml`). What's left needs **your** Apple account and payment, so
-only you can do it. All steps work in a web browser. No Mac is needed;
-Codemagic builds the app on its Macs.
+only you can do it. All steps work in a web browser: Codemagic builds the app on its Macs. With
+your own Mac you can also build it yourself (see *Alternative: build on your
+own Mac* below).
 
 **Cost:** Apple Developer Program **$99 / year** (Apple's fee; required for
 any App Store app). Codemagic is free for this (500 build minutes a month;
@@ -156,6 +157,27 @@ No account or sign-in is needed. To try it: tap "What should I wear?" on the fir
 ```
 
 ---
+
+## Alternative: build on your own Mac (instead of steps 3–5)
+
+You have a Mac, so you can also build and upload the app yourself with
+Apple's free **Xcode**, and try it on a simulated iPhone first. Codemagic
+(steps 3–5) remains the route with the fewest technical steps; the Mac route
+lets you see the app running before you upload it.
+
+1. Install **Xcode** from the Mac App Store (free, large: ~15 GB). Open it
+   once and accept the extra components.
+2. Install **Claude Code** on the Mac (claude.com/claude-code) and open it
+   in a copy of this project. Ask it to *"install Flutter, run the app on the
+   iPhone simulator, then build the App Store version with
+   STORE_BUILD=true"*. It will run the commands
+   (`flutter run`, then `flutter build ipa --dart-define=STORE_BUILD=true`).
+3. In Xcode: **Settings → Accounts → +** → sign in with your Apple Account.
+   Open `ios/Runner.xcworkspace`, select **Runner → Signing & Capabilities**,
+   tick **Automatically manage signing** and pick your team.
+4. Upload: open the built archive (Xcode **Window → Organizer**) →
+   **Distribute App → App Store Connect → Upload**. Then continue with
+   step 6.
 
 ## What's different in the App Store version
 

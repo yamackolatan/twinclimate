@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../logic/best_time.dart';
 import '../logic/gear_engine.dart';
 import '../logic/share_text.dart';
 import '../logic/shop_logic.dart';
@@ -50,6 +51,9 @@ class _SessionResultPageState extends State<SessionResultPage> {
   /// from the last 10 years is shown instead.
   TypicalSession? _typical;
 
+  /// The whole day's forecast, for the "better time" hint.
+  List<HourWeather> _dayHours = const [];
+
   bool get _isTypical => beyondForecast(widget.plan.start, DateTime.now());
 
   @override
@@ -73,6 +77,7 @@ class _SessionResultPageState extends State<SessionResultPage> {
       firstDay: windowHours.first,
       lastDay: windowHours.last,
     );
+    _dayHours = all;
     final byHour = {
       for (final hour in all)
         DateTime(
@@ -199,14 +204,11 @@ class _SessionResultPageState extends State<SessionResultPage> {
   }
 
   /// Re-runs the same session [hours] earlier or later.
-  void _shift(int hours) {
-    final p = widget.plan;
-    final moved = SessionPlan(
-      sport: p.sport,
-      place: p.place,
-      start: p.start.add(Duration(hours: hours)),
-      distanceKm: p.distanceKm,
-    );
+  void _shift(int hours) =>
+      _moveTo(widget.plan.start.add(Duration(hours: hours)));
+
+  void _moveTo(DateTime start) {
+    final moved = widget.plan.movedTo(start);
     widget.onPlanChanged?.call(moved);
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
@@ -362,11 +364,35 @@ class _SessionResultPageState extends State<SessionResultPage> {
                               Text(
                                 '${weatherDescription(start.weatherCode)} · '
                                 '${start.humidityPercent.round()}% humidity · '
-                                '${windPhrase(forecast.maxWindKmh, forecast.maxGustKmh)}',
+                                '${windPhraseWithDirection(forecast.maxWindKmh, forecast.maxGustKmh, forecast.windFromDeg)}',
                                 style: TextStyle(
                                   color: scheme.onPrimaryContainer,
                                 ),
                               ),
+                              if (forecast.sunrise != null &&
+                                  forecast.sunset != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Sunrise ${formatTime(forecast.sunrise!)} · '
+                                  'sunset ${formatTime(forecast.sunset!)}',
+                                  style: TextStyle(
+                                    color: scheme.onPrimaryContainer,
+                                  ),
+                                ),
+                              ],
+                              if (plan.sport == Sport.bike &&
+                                  forecast.windy &&
+                                  forecast.windFromDeg != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Tip: ride out into the wind (head '
+                                  '${compassPoint(forecast.windFromDeg!)}) so '
+                                  'it pushes you home when you\'re tired.',
+                                  style: TextStyle(
+                                    color: scheme.onPrimaryContainer,
+                                  ),
+                                ),
+                              ],
                               if (forecast.rainLikely) ...[
                                 const SizedBox(height: 4),
                                 Text(
@@ -393,6 +419,7 @@ class _SessionResultPageState extends State<SessionResultPage> {
                 const SizedBox(height: 8),
                 HourCards(hours: forecast.hours),
                 const SizedBox(height: 8),
+                if (_typical == null) _betterTimeHint(context, forecast),
                 Row(
                   children: [
                     Expanded(
@@ -453,6 +480,42 @@ class _SessionResultPageState extends State<SessionResultPage> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _betterTimeHint(BuildContext context, SessionForecast forecast) {
+    final better = betterTime(
+      plan: widget.plan,
+      day: _dayHours,
+      now: DateTime.now(),
+    );
+    if (better == null) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Card(
+        elevation: 0,
+        color: scheme.secondaryContainer,
+        child: ListTile(
+          leading: Icon(Icons.schedule, color: scheme.onSecondaryContainer),
+          title: Text(
+            'Better at ${formatTime(better.start)}',
+            style: TextStyle(
+              color: scheme.onSecondaryContainer,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          subtitle: Text(
+            better.why,
+            style: TextStyle(color: scheme.onSecondaryContainer),
+          ),
+          trailing: Icon(
+            Icons.arrow_forward,
+            color: scheme.onSecondaryContainer,
+          ),
+          onTap: () => _moveTo(better.start),
         ),
       ),
     );

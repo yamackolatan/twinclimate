@@ -66,15 +66,17 @@ List<GearItem> buildKit(
   SessionForecast forecast, {
   double distanceKm = 0,
   ComfortProfile? comfort,
+  SessionTiming? timing,
 }) {
-  final standard = _build(sport, forecast, distanceKm, const {});
+  final t = timing ?? const SessionTiming();
+  final standard = _build(sport, forecast, distanceKm, const {}, t);
   if (comfort == null) return standard;
   final zone = TempZone.of(forecast.meanApparentC);
   final steps = {
     for (final part in BodyPart.values) part: comfort.steps(sport, part, zone),
   };
   if (steps.values.every((s) => s == 0)) return standard;
-  final personal = _build(sport, forecast, distanceKm, steps);
+  final personal = _build(sport, forecast, distanceKm, steps, t);
   return [
     for (final item in personal)
       if (steps[item.part] != 0 &&
@@ -98,17 +100,36 @@ List<GearItem> _build(
   SessionForecast forecast,
   double distanceKm,
   Map<BodyPart, int> steps,
+  SessionTiming timing,
 ) {
-  final builder = _KitBuilder(sport, forecast, distanceKm, steps);
+  final builder = _KitBuilder(sport, forecast, distanceKm, steps, timing);
   switch (sport) {
     case Sport.run:
       builder.buildRun();
     case Sport.bike:
       builder.buildBike();
     case Sport.swim:
-      builder.buildSwim();
+      timing.pool ? builder.buildPoolSwim() : builder.buildSwim();
   }
+  builder.addExtras();
   return builder.items;
+}
+
+/// When the session is, how long it lasts and where (pool or open water),
+/// for the advice that depends on more than the weather: lights after
+/// dark, water and food on long sessions.
+class SessionTiming {
+  const SessionTiming({
+    this.start,
+    this.end,
+    this.durationHours,
+    this.pool = false,
+  });
+
+  final DateTime? start;
+  final DateTime? end;
+  final double? durationHours;
+  final bool pool;
 }
 
 /// Convenience wrapper taking a whole session plan.
@@ -121,6 +142,12 @@ List<GearItem> buildKitForPlan(
   forecast,
   distanceKm: plan.distanceKm,
   comfort: comfort,
+  timing: SessionTiming(
+    start: plan.start,
+    end: plan.end,
+    durationHours: plan.durationHours,
+    pool: plan.sport == Sport.swim && plan.pool,
+  ),
 );
 
 /// "You run warm between 13 and 16°C, so this is lighter than usual." The
@@ -177,11 +204,12 @@ Map<BodyPart, String> mainSuggestions(List<GearItem> kit) {
 }
 
 class _KitBuilder {
-  _KitBuilder(this.sport, this.f, this.distanceKm, this.steps);
+  _KitBuilder(this.sport, this.f, this.distanceKm, this.steps, this.timing);
 
   final Sport sport;
   final SessionForecast f;
   final double distanceKm;
+  final SessionTiming timing;
 
   /// Personal comfort steps per body part (F4): +1 = one range lighter.
   final Map<BodyPart, int> steps;
@@ -792,6 +820,152 @@ class _KitBuilder {
   }
 
   // --------------------------------------------------------------- swim --
+
+  // ------------------------------------------------- pool swim -------
+
+  /// Indoor or outdoor pool: no wetsuit or neoprene; weather only matters
+  /// for getting there and back.
+  void buildPoolSwim() {
+    add(BodyPart.head, 'Swim cap', 'Pool rules usually ask for one.');
+    add(BodyPart.head, 'Goggles', 'Clear lenses for indoor light.');
+    add(BodyPart.torso, 'Swimsuit', 'Pool session — no wetsuit needed.');
+    add(BodyPart.torso, 'Towel', 'Always in the swim bag.');
+    if (atMost(BodyPart.torso, TempBand.cool)) {
+      add(
+        BodyPart.torso,
+        'Warm layer for the trip home',
+        '$feelsLike outside — damp hair and skin chill fast afterwards.',
+      );
+    }
+    add(
+      BodyPart.feet,
+      'Pool slippers',
+      'Grip on wet tiles and hygiene in the changing room.',
+    );
+  }
+
+  // --------------------------------------------- beyond clothing -------
+
+  /// Light, sun, water and food: advice that comes from the session's
+  /// timing and length, for every sport.
+  void addExtras() {
+    if (timing.pool) return;
+    _darkness();
+    _sun();
+    if (sport != Sport.swim) _waterAndFood();
+  }
+
+  /// "Still dark at the start — sunrise is at 07:52", or null in daylight.
+  String? get darkNote {
+    final start = timing.start;
+    final end = timing.end;
+    final rise = f.sunrise;
+    final set = f.sunset;
+    if (start != null && end != null && rise != null && set != null) {
+      if (start.isBefore(rise)) {
+        return 'Still dark at the start — sunrise is at ${formatTime(rise)}';
+      }
+      if (end.isAfter(set)) {
+        return start.isAfter(set)
+            ? 'It\'s dark — sunset was at ${formatTime(set)}'
+            : 'Dark before you finish — sunset is at ${formatTime(set)}';
+      }
+      return null;
+    }
+    // No sun times (e.g. typical weather): use the hourly day/night flag
+    // for the hours the session actually covers.
+    final covered = [
+      for (final h in f.hours)
+        if (end == null || h.time.isBefore(end)) h,
+    ];
+    return covered.any((h) => !h.isDay)
+        ? 'Part of your session is in the dark'
+        : null;
+  }
+
+  void _darkness() {
+    final note = darkNote;
+    if (note == null) return;
+    switch (sport) {
+      case Sport.run:
+        add(BodyPart.head, 'Headlamp or chest light', '$note.');
+        add(
+          BodyPart.torso,
+          'Reflective vest or bands',
+          '$note — let cars and cyclists see you.',
+        );
+      case Sport.bike:
+        add(
+          BodyPart.torso,
+          'Front and rear bike lights',
+          '$note — lights are required by law after dark.',
+        );
+        add(
+          BodyPart.torso,
+          'Reflective or bright top',
+          '$note — be seen from the side too.',
+          optional: true,
+        );
+      case Sport.swim:
+        add(
+          BodyPart.torso,
+          'Bright tow float with a light',
+          '$note — open water in the dark is risky; never swim alone.',
+        );
+    }
+  }
+
+  void _sun() {
+    final uv = f.maxUvIndex;
+    final strong = uv != null ? uv >= 3 : f.meanRadiationWm2 >= 500;
+    if (!strong || !f.mostlyDaylight) return;
+    add(
+      BodyPart.head,
+      sport == Sport.swim ? 'Water-resistant sunscreen' : 'Sunscreen (SPF 30+)',
+      uv != null
+          ? 'UV index up to ${uv.round()} during your session — skin burns '
+                'without protection.'
+          : 'Strong sun during your session.',
+    );
+  }
+
+  void _waterAndFood() {
+    final hours = timing.durationHours;
+    if (hours == null) return;
+    final warm = f.kitFeelsC >= 22;
+    final long = formatDuration(hours);
+    if (hours >= 1 || (warm && hours >= 0.5)) {
+      final salts = hours >= 1.5 && f.kitFeelsC >= 20;
+      final why = warm
+          ? '$long and warm — you sweat more than you think.'
+          : '$long on the move — drink before you\'re thirsty.';
+      if (sport == Sport.run) {
+        add(
+          BodyPart.hands,
+          salts
+              ? 'Soft flask with electrolytes'
+              : 'Handheld bottle or soft flask',
+          why,
+          optional: hours < 1.25 && !warm,
+        );
+      } else {
+        add(
+          BodyPart.torso,
+          salts ? 'Bottles with electrolytes' : 'Full bottle on the bike',
+          why,
+        );
+      }
+    }
+    if (hours >= 1.5) {
+      add(
+        BodyPart.torso,
+        sport == Sport.run
+            ? 'Gel or snack in a pocket'
+            : 'Bar or gels in your jersey pocket',
+        '$long — eat a little every 30–45 minutes after the first hour.',
+      );
+    }
+  }
 
   void buildSwim() {
     final airBand = band(BodyPart.torso);

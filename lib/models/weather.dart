@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 /// One hour of forecast at a specific place. Times are local to the place.
 class HourWeather {
   const HourWeather({
@@ -12,6 +14,10 @@ class HourWeather {
     required this.weatherCode,
     required this.isDay,
     this.radiationWm2 = 0,
+    this.windDirectionDeg,
+    this.uvIndex,
+    this.sunrise,
+    this.sunset,
   });
 
   final DateTime time;
@@ -34,6 +40,17 @@ class HourWeather {
   /// Sunshine strength (global horizontal radiation), W/m². The service's
   /// "feels like" leaves the sun out, so the kit rules add it themselves.
   final double radiationWm2;
+
+  /// Where the wind blows FROM, degrees (0 = north, 90 = east); null when
+  /// unknown (e.g. typical weather).
+  final double? windDirectionDeg;
+
+  /// UV index (sunburn risk); null when unknown.
+  final double? uvIndex;
+
+  /// That day's sunrise and sunset at the place (local time), when known.
+  final DateTime? sunrise;
+  final DateTime? sunset;
 }
 
 /// Forecast for one coordinate of a multi-spot request, with the ground
@@ -133,6 +150,29 @@ class SessionForecast {
   bool get humid => meanHumidityPercent >= 75;
 
   double get meanRadiationWm2 => _mean([for (final h in hours) h.radiationWm2]);
+
+  /// Highest UV index in the window, or null when unknown.
+  double? get maxUvIndex {
+    final known = [for (final h in hours) ?h.uvIndex];
+    return known.isEmpty ? null : _max(known);
+  }
+
+  /// Average wind direction (where it blows from), or null when unknown.
+  /// Averaged as vectors so 350° and 10° give 0°, not 180°.
+  double? get windFromDeg {
+    final known = [for (final h in hours) ?h.windDirectionDeg];
+    if (known.isEmpty) return null;
+    var x = 0.0, y = 0.0;
+    for (final d in known) {
+      x += math.cos(d * math.pi / 180);
+      y += math.sin(d * math.pi / 180);
+    }
+    if (x.abs() < 1e-9 && y.abs() < 1e-9) return null;
+    return (math.atan2(y, x) * 180 / math.pi + 360) % 360;
+  }
+
+  DateTime? get sunrise => atStart.sunrise;
+  DateTime? get sunset => atStart.sunset;
 
   /// Degrees added for sunshine while exercising. The forecast's "feels
   /// like" ignores the sun (checked against the formula), yet studies show

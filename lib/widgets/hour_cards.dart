@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../logic/weather_text.dart';
@@ -13,7 +15,8 @@ class HourCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 175,
+      // Grows with the phone's text size setting.
+      height: MediaQuery.textScalerOf(context).scale(150) + 30,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: hours.length,
@@ -76,9 +79,27 @@ class _HourCard extends StatelessWidget {
                   style: textTheme.bodySmall,
                 ),
                 const SizedBox(width: 8),
-                Icon(Icons.air, size: 14, color: scheme.onSurfaceVariant),
+                if (hour.windDirectionDeg != null)
+                  Tooltip(
+                    message:
+                        'Wind from the ${compassPoint(hour.windDirectionDeg!)}',
+                    // The arrow points where the wind blows to.
+                    child: Transform.rotate(
+                      angle: (hour.windDirectionDeg! + 180) * math.pi / 180,
+                      child: Icon(
+                        Icons.navigation,
+                        size: 14,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                else
+                  Icon(Icons.air, size: 14, color: scheme.onSurfaceVariant),
                 const SizedBox(width: 2),
-                Text('${hour.windKmh.round()}', style: textTheme.bodySmall),
+                Text(
+                  '${hour.windKmh.round()} km/h',
+                  style: textTheme.bodySmall,
+                ),
               ],
             ),
           ],

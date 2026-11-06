@@ -50,6 +50,12 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     for (final sport in Sport.values) sport: widget.store.distanceFor(sport),
   };
 
+  /// The user's own pace per sport (null = typical pace).
+  late final Map<Sport, double?> _pace = {
+    for (final sport in Sport.values) sport: widget.store.paceFor(sport),
+  };
+  late bool _pool = widget.store.swimInPool;
+
   // Race Matching (F3) settings.
   bool _matching = false;
   String? _raceId;
@@ -141,6 +147,8 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
           place: _place!,
           start: _start,
           distanceKm: _distanceKm[_sport]!,
+          paceHoursPerKm: _pace[_sport],
+          pool: _sport == Sport.swim && _pool,
         );
 
   Future<void> _pickPlace() async {
@@ -223,6 +231,76 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
   /// The chosen start is already over (today, earlier than now).
   bool get _startPassed =>
       _start.isBefore(DateTime.now().subtract(const Duration(minutes: 30)));
+
+  Future<void> _pickPace() async {
+    final choices = paceChoices(_sport);
+    final typical = _sport.hoursPerKm;
+    int nearest(double value) {
+      var best = 0;
+      for (var i = 1; i < choices.length; i++) {
+        if ((choices[i] - value).abs() < (choices[best] - value).abs()) {
+          best = i;
+        }
+      }
+      return best;
+    }
+
+    var index = nearest(_pace[_sport] ?? typical);
+    final picked = await showModalBottomSheet<double?>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheet) => Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Your ${_sport.label.toLowerCase()} pace',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Used to work out how long you\'ll be out, so the weather '
+                'covers your whole session.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                formatPace(_sport, choices[index]),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              Slider(
+                value: index.toDouble(),
+                max: (choices.length - 1).toDouble(),
+                divisions: choices.length - 1,
+                onChanged: (v) => setSheet(() => index = v.round()),
+              ),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(-1.0),
+                    child: Text('Use typical (${formatPace(_sport, typical)})'),
+                  ),
+                  const Spacer(),
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).pop(choices[index]),
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    final pace = picked < 0 ? null : picked;
+    setState(() => _pace[_sport] = pace);
+    await widget.store.rememberPace(_sport, pace);
+  }
 
   Future<void> _pickTime() async {
     final picked = await showTimePicker(context: context, initialTime: _time);
@@ -436,6 +514,28 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                     onSelectionChanged: (selection) =>
                         setState(() => _sport = selection.first),
                   ),
+                  if (_sport == Sport.swim && !matching) ...[
+                    const SizedBox(height: 8),
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(
+                          value: false,
+                          label: Text('Open water'),
+                          icon: Icon(Icons.waves),
+                        ),
+                        ButtonSegment(
+                          value: true,
+                          label: Text('Pool'),
+                          icon: Icon(Icons.pool),
+                        ),
+                      ],
+                      selected: {_pool},
+                      onSelectionChanged: (selection) {
+                        setState(() => _pool = selection.first);
+                        widget.store.rememberPool(_pool);
+                      },
+                    ),
+                  ],
                   const SizedBox(height: 16),
 
                   // Place
@@ -548,12 +648,22 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                     ),
                   ),
                   if (plan != null && !matching)
-                    Text(
-                      'About ${plan.durationLabel} for a typical pace — '
-                      'we\'ll show the weather for ${plan.windowLabel}.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'About ${plan.durationLabel} at '
+                            '${_pace[_sport] == null ? 'a typical' : 'your'} '
+                            'pace of ${formatPace(_sport, _pace[_sport] ?? _sport.hoursPerKm)} '
+                            '— weather for ${plan.windowLabel}.',
+                            style: muted,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _pickPace,
+                          child: const Text('Change pace'),
+                        ),
+                      ],
                     ),
                   if (matching) ...[
                     const SizedBox(height: 8),

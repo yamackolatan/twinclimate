@@ -81,6 +81,8 @@ class OpenMeteoWeatherService implements WeatherService {
     'weather_code',
     'is_day',
     'shortwave_radiation',
+    'wind_direction_10m',
+    'uv_index',
   ];
 
   @override
@@ -115,6 +117,7 @@ class OpenMeteoWeatherService implements WeatherService {
       'latitude': place.latitude.toStringAsFixed(4),
       'longitude': place.longitude.toStringAsFixed(4),
       'hourly': _hourlyVariables.join(','),
+      'daily': 'sunrise,sunset',
       'timezone': 'auto',
       'start_date': _dateParam(firstDay),
       'end_date': _dateParam(lastDay),
@@ -164,6 +167,7 @@ class OpenMeteoWeatherService implements WeatherService {
     final hourly = json['hourly'] as Map<String, dynamic>?;
     final times = hourly?['time'] as List?;
     if (hourly == null || times == null) return const [];
+    final sun = _sunTimes(json['daily']);
     return [
       for (var i = 0; i < times.length; i++)
         // An hour without a temperature is unknown, not 0 °C: skip it.
@@ -184,6 +188,10 @@ class OpenMeteoWeatherService implements WeatherService {
             weatherCode: _number(hourly['weather_code'], i).round(),
             isDay: _number(hourly['is_day'], i) > 0,
             radiationWm2: _number(hourly['shortwave_radiation'], i),
+            windDirectionDeg: _maybeNumber(hourly['wind_direction_10m'], i),
+            uvIndex: _maybeNumber(hourly['uv_index'], i),
+            sunrise: sun[(times[i] as String).substring(0, 10)]?.$1,
+            sunset: sun[(times[i] as String).substring(0, 10)]?.$2,
           ),
     ];
   }
@@ -245,6 +253,26 @@ class OpenMeteoWeatherService implements WeatherService {
           hours: _parseHistory(item),
         ),
     ];
+  }
+
+  /// Day ("2026-11-07") → (sunrise, sunset), from the optional daily block.
+  static Map<String, (DateTime, DateTime)> _sunTimes(Object? daily) {
+    if (daily is! Map) return const {};
+    final days = daily['time'];
+    final rises = daily['sunrise'];
+    final sets = daily['sunset'];
+    if (days is! List || rises is! List || sets is! List) return const {};
+    final result = <String, (DateTime, DateTime)>{};
+    for (
+      var i = 0;
+      i < days.length && i < rises.length && i < sets.length;
+      i++
+    ) {
+      final rise = DateTime.tryParse('${rises[i]}');
+      final set = DateTime.tryParse('${sets[i]}');
+      if (rise != null && set != null) result['${days[i]}'] = (rise, set);
+    }
+    return result;
   }
 
   static List<PastHour> _parseHistory(Map<String, dynamic> json) {

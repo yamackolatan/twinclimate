@@ -54,10 +54,18 @@ class SessionPlan {
     required this.place,
     required this.start,
     required this.distanceKm,
+    this.paceHoursPerKm,
+    this.pool = false,
   });
 
   final Sport sport;
   final Place place;
+
+  /// The user's own pace; null means the sport's typical amateur pace.
+  final double? paceHoursPerKm;
+
+  /// Swim in a pool rather than open water (no wetsuit/neoprene advice).
+  final bool pool;
 
   /// Local time at the place (Open-Meteo is queried with timezone=auto,
   /// so forecast hours are local to the place too).
@@ -65,7 +73,17 @@ class SessionPlan {
 
   final double distanceKm;
 
-  double get durationHours => distanceKm * sport.hoursPerKm;
+  double get durationHours => distanceKm * (paceHoursPerKm ?? sport.hoursPerKm);
+
+  /// The same session at another start time.
+  SessionPlan movedTo(DateTime newStart) => SessionPlan(
+    sport: sport,
+    place: place,
+    start: newStart,
+    distanceKm: distanceKm,
+    paceHoursPerKm: paceHoursPerKm,
+    pool: pool,
+  );
 
   DateTime get end =>
       start.add(Duration(minutes: (durationHours * 60).round()));
@@ -134,6 +152,31 @@ const List<String> _monthNames = [
   'Nov',
   'Dec',
 ];
+
+/// Pace as the sport usually states it: "5:30 /km" (run), "28 km/h"
+/// (bike), "2:10 /100 m" (swim).
+String formatPace(Sport sport, double hoursPerKm) {
+  String minSec(double minutes) {
+    final total = (minutes * 60).round();
+    return '${total ~/ 60}:${(total % 60).toString().padLeft(2, '0')}';
+  }
+
+  return switch (sport) {
+    Sport.run => '${minSec(hoursPerKm * 60)} /km',
+    Sport.bike => '${(1 / hoursPerKm).round()} km/h',
+    Sport.swim => '${minSec(hoursPerKm * 6)} /100 m',
+  };
+}
+
+/// Pace choices per sport, slowest first, as hours per km.
+List<double> paceChoices(Sport sport) => switch (sport) {
+  // 9:00 down to 3:30 min/km in 15 s steps.
+  Sport.run => [for (var s = 540; s >= 210; s -= 15) s / 3600],
+  // 15 to 40 km/h.
+  Sport.bike => [for (var k = 15; k <= 40; k++) 1 / k],
+  // 3:30 down to 1:20 per 100 m in 5 s steps.
+  Sport.swim => [for (var s = 210; s >= 80; s -= 5) s * 10 / 3600],
+};
 
 /// "Sat 13 Jun"
 String formatDay(DateTime d) =>

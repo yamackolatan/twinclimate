@@ -9,6 +9,16 @@ import '../models/session.dart';
 /// Items not listed here never get a shop link (e.g. "Your usual running
 /// shoes", "Towel" kit the user certainly has, or advice-only items).
 const Map<String, List<String>> itemProductTypes = {
+  'Sunscreen (SPF 30+)': ['race_sunscreen'],
+  'Water-resistant sunscreen': ['race_sunscreen'],
+  'Handheld bottle or soft flask': ['race_softflask', 'race_bottle'],
+  'Soft flask with electrolytes': ['race_electrolytes', 'race_softflask'],
+  'Full bottle on the bike': ['race_bottle'],
+  'Bottles with electrolytes': ['race_electrolytes', 'race_bottle'],
+  'Gel or snack in a pocket': ['race_gel'],
+  'Bar or gels in your jersey pocket': ['race_gel'],
+  'Swim cap': ['swim_cap'],
+  'Goggles': ['swim_goggles'],
   // Run — head
   'Warm beanie + neck gaiter': ['run_beanie', 'run_neck_gaiter'],
   'Warm beanie': ['run_beanie'],
@@ -123,6 +133,15 @@ const Map<String, List<String>> itemProductTypes = {
 
 /// Kit items that intentionally never get a shop link.
 const Set<String> noShopItems = {
+  // Not in the demo catalogue: never invent products.
+  'Headlamp or chest light',
+  'Reflective vest or bands',
+  'Front and rear bike lights',
+  'Reflective or bright top',
+  'Bright tow float with a light',
+  'Swimsuit',
+  'Warm layer for the trip home',
+  'Pool slippers',
   'Your usual running shoes',
   'Cycling shoes + socks',
   'Towel',

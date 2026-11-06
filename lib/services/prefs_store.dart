@@ -79,6 +79,34 @@ class PrefsStore {
   Future<void> rememberDistance(Sport sport, double km) =>
       _prefs.setDouble('$_kDistancePrefix${sport.name}', km);
 
+  static const _kPacePrefix = 'paceHoursPerKm.';
+  static const _kPool = 'swimInPool';
+
+  /// The user's own pace for [sport], or null for the typical pace.
+  double? paceFor(Sport sport) {
+    try {
+      return _prefs.getDouble('$_kPacePrefix${sport.name}');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> rememberPace(Sport sport, double? hoursPerKm) =>
+      hoursPerKm == null
+      ? _prefs.remove('$_kPacePrefix${sport.name}')
+      : _prefs.setDouble('$_kPacePrefix${sport.name}', hoursPerKm);
+
+  /// Swims in a pool rather than open water.
+  bool get swimInPool {
+    try {
+      return _prefs.getBool(_kPool) ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> rememberPool(bool pool) => _prefs.setBool(_kPool, pool);
+
   /// Last used start time as (hour, minute); defaults to 08:00.
   (int, int) get lastStartTime =>
       (_prefs.getInt(_kStartHour) ?? 8, _prefs.getInt(_kStartMinute) ?? 0);

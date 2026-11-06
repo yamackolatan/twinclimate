@@ -91,3 +91,24 @@ String windPhrase(double windKmh, double gustKmh) {
   final gustNote = gustKmh >= 45 ? ', gusts to ${gustKmh.round()} km/h' : '';
   return '$word $wind km/h$gustNote';
 }
+
+/// Compass point the wind blows FROM, e.g. 225° → "SW".
+String compassPoint(double degrees) {
+  const points = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  return points[((degrees % 360) / 45).round() % 8];
+}
+
+/// "breezy 24 km/h from the SW" (direction only when known).
+String windPhraseWithDirection(
+  double windKmh,
+  double gustKmh,
+  double? fromDegrees,
+) {
+  final base = windPhrase(windKmh, gustKmh);
+  if (fromDegrees == null || windKmh < 5) return base;
+  final dir = compassPoint(fromDegrees);
+  final gust = base.indexOf(', gusts');
+  return gust < 0
+      ? '$base from the $dir'
+      : '${base.substring(0, gust)} from the $dir${base.substring(gust)}';
+}

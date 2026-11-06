@@ -15,6 +15,8 @@ import '../widgets/feedback_card.dart';
 import '../widgets/place_search_sheet.dart';
 import '../widgets/races_section.dart';
 import '../widgets/weights_panel.dart';
+import '../app_config.dart';
+import 'about_page.dart';
 import 'comfort_profile_page.dart';
 import 'match_result_page.dart';
 import 'my_gear_page.dart';
@@ -118,6 +120,12 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
 
   Future<void> _openPage(String choice) async {
     if (choice == 'comfort') return _openComfortProfile();
+    if (choice == 'about') {
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (context) => const AboutPage()));
+      return;
+    }
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => choice == 'gear'
@@ -392,7 +400,7 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
         // Long-press the name for the Partner demo (for pitches; hidden
         // from everyday users).
         title: GestureDetector(
-          onLongPress: () => _openPage('partner'),
+          onLongPress: shoppingDemo ? () => _openPage('partner') : null,
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -422,11 +430,19 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                   title: Text('Comfort profile'),
                 ),
               ),
+              if (shoppingDemo)
+                PopupMenuItem(
+                  value: 'gear',
+                  child: ListTile(
+                    leading: Icon(Icons.backpack_outlined),
+                    title: Text('My gear & shopping'),
+                  ),
+                ),
               PopupMenuItem(
-                value: 'gear',
+                value: 'about',
                 child: ListTile(
-                  leading: Icon(Icons.backpack_outlined),
-                  title: Text('My gear & shopping'),
+                  leading: Icon(Icons.info_outline),
+                  title: Text('About & privacy'),
                 ),
               ),
             ],

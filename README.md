@@ -62,6 +62,13 @@ to GitHub Pages automatically. One-time setup:
 
    **https://yamackolatan.github.io/twinclimate/**
 
+## iPhone app (App Store)
+
+The iPhone version is built in the cloud by Codemagic (`codemagic.yaml`) —
+no Mac needed. Step-by-step setup and the store texts are in
+[docs/APP_STORE.md](docs/APP_STORE.md). The App Store version leaves out the
+Decathlon shopping demo; the website keeps it.
+
 ## Run it locally (for developers)
 
 ```bash

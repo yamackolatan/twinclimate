@@ -404,6 +404,30 @@ Replaced by the two shopping features (F5a, F5b) below.
   one line; two columns on screens ≥ 1000 px; 640 px max width on all
   pages; web manifest/description updated.
 
+### iPhone / App Store (owner request, Nov 2026 — build to these)
+- iOS project in `ios/` (bundle id `com.yamackolatan.twinclimate`, iPhone
+  only, portrait, display name "TwinClimate", version from pubspec
+  `1.0.0+N`). Built and uploaded to TestFlight by Codemagic
+  (`codemagic.yaml`, workflow "iOS App Store"); never assume a Mac.
+  Owner setup steps and store texts: `docs/APP_STORE.md`.
+- **Store build = `--dart-define=STORE_BUILD=true`** (`lib/app_config.dart`):
+  hides the Decathlon shopping demo (shop links, race-day kit, My gear &
+  shopping, Partner demo) — Apple guidelines 2.2 (no demos) and 5.2
+  (third-party brands). The website keeps the demo. `test/store_build_test.dart`
+  checks it (`flutter test --dart-define=STORE_BUILD=true ...`).
+- Location and sharing: browser APIs on the web, `geolocator` /
+  `share_plus` in the app (`lib/services/device_services*.dart`).
+  `NSLocationWhenInUseUsageDescription` and `ios/Runner/PrivacyInfo.xcprivacy`
+  (precise location, app functionality, not linked, no tracking) must stay
+  in step with what the app actually does.
+- Nominatim requests from the app send a `TwinClimate/<version>` User-Agent.
+- About & privacy screen (⋮ menu) with Open-Meteo (CC BY 4.0) and
+  OpenStreetMap attribution; public pages `web/privacy.html` and
+  `web/support.html` are the App Store privacy and support URLs. Keep
+  `appVersion` in `lib/app_config.dart` equal to pubspec's version.
+- Open-Meteo's free API is for non-commercial use: if the app ever earns
+  money, move to their paid API (key) and tell the owner.
+
 ### Later phases (do NOT start without the owner asking)
 - V2: exact route suggestions (OSM/Overpass + loop generation, elevation,
   surface), cycling-specific matching, Turkish localization.

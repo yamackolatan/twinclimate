@@ -1,7 +1,7 @@
-/// Browser features the app uses where available: the device's location
-/// and the system share sheet. Off the web (tests) they report "not
-/// available" and callers fall back gracefully.
+/// Device features the app uses: the current location and the system share
+/// sheet. The website uses the browser's versions; the phone app the
+/// system's. Both report "not available" gracefully (null / false).
 library;
 
-export 'device_services_stub.dart'
+export 'device_services_native.dart'
     if (dart.library.js_interop) 'device_services_web.dart';

@@ -1,6 +1,9 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
+
+import '../app_config.dart';
 
 /// Turns coordinates into a human place name ("Ouderkerk aan de Amstel"). Returns null when
 /// no name is available; callers fall back to "38 km north".
@@ -49,6 +52,15 @@ class OsmPlaceNamer implements PlaceNamer {
               'zoom': '14',
               'accept-language': 'en',
             }),
+            // Nominatim's usage policy requires apps to identify
+            // themselves; browsers send their own User-Agent instead.
+            headers: kIsWeb
+                ? null
+                : {
+                    'User-Agent':
+                        'TwinClimate/$appVersion '
+                        '(+https://yamackolatan.github.io/twinclimate)',
+                  },
           )
           .timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) return null;

@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../app_config.dart';
+
 import '../models/comfort.dart';
 import '../models/gear.dart';
 
@@ -196,6 +198,7 @@ class PrefsStore {
 
   /// Settings switch: show "Don't have one?" shop suggestions.
   bool get shopSuggestionsOn {
+    if (!shoppingDemo) return false;
     try {
       return _prefs.getBool(_kShopOn) ?? true;
     } catch (_) {

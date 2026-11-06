@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../models/place.dart';
@@ -74,9 +75,11 @@ class _PlaceSearchSheetState extends State<PlaceSearchSheet> {
     if (position == null) {
       setState(() {
         _locating = false;
-        _error =
-            'Couldn\'t get your location. Allow location access for this '
-            'site in your browser, or search for the place instead.';
+        _error = kIsWeb
+            ? 'Couldn\'t get your location. Allow location access for this '
+                  'site in your browser, or search for the place instead.'
+            : 'Couldn\'t get your location. Allow location access for '
+                  'TwinClimate in Settings, or search for the place instead.';
       });
       return;
     }

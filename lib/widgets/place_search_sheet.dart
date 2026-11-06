@@ -80,12 +80,14 @@ class _PlaceSearchSheetState extends State<PlaceSearchSheet> {
         _searching = false;
         _error = null;
       });
-    } on WeatherServiceException catch (e) {
+    } catch (e) {
       if (!mounted || _query != query) return;
       setState(() {
         _results = const [];
         _searching = false;
-        _error = e.message;
+        _error = e is WeatherServiceException
+            ? e.message
+            : 'Place search failed. Try again in a moment.';
       });
     }
   }

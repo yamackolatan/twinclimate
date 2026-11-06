@@ -38,18 +38,23 @@ class KitChecklist extends StatefulWidget {
 }
 
 class _KitChecklistState extends State<KitChecklist> {
-  late final Set<GearItem> _packed = {
+  // Tracked by name: the parent rebuilds the kit (new GearItem objects)
+  // whenever it redraws, and ticks must survive that.
+  late final Set<String> _packedNames = {...widget.initialPacked};
+
+  Set<String> get _packed => {
     for (final item in widget.items)
-      if (widget.initialPacked.contains(item.name)) item,
+      if (_packedNames.contains(item.name)) item.name,
   };
 
   void _toggle(GearItem item) {
     setState(() {
-      _packed.contains(item) ? _packed.remove(item) : _packed.add(item);
+      _packedNames.contains(item.name)
+          ? _packedNames.remove(item.name)
+          : _packedNames.add(item.name);
     });
-    widget.onPackedChanged?.call({
-      for (final i in _packed) i.name,
-    }, _packed.length == widget.items.length);
+    final packed = _packed;
+    widget.onPackedChanged?.call(packed, packed.length == widget.items.length);
   }
 
   @override
@@ -140,7 +145,7 @@ class _KitChecklistState extends State<KitChecklist> {
 
   Widget _itemTile(BuildContext context, GearItem item) {
     final scheme = Theme.of(context).colorScheme;
-    final isPacked = _packed.contains(item);
+    final isPacked = _packedNames.contains(item.name);
     final highlighted = item.trigger != GearTrigger.none;
 
     return Card(

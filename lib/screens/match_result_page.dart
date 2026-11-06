@@ -139,6 +139,7 @@ class _MatchResultPageState extends State<MatchResultPage> {
           results: [..._result!.results]..[i] = renamed,
           spotsChecked: _result!.spotsChecked,
           notes: _result!.notes,
+          typical: _result!.typical,
         );
       });
     }

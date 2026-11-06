@@ -39,11 +39,15 @@ class TypicalWeatherService {
     this.weather, {
     DateTime Function()? clock,
     this.retryDelay = const Duration(seconds: 2),
+    this.limitWait = const Duration(seconds: 65),
   }) : _clock = clock ?? DateTime.now;
 
   final WeatherService weather;
   final DateTime Function() _clock;
   final Duration retryDelay;
+
+  /// How long to pause when the weather service's per-minute limit is hit.
+  final Duration limitWait;
 
   /// Typical conditions for the session hours [slots] (local times).
   Future<TypicalSession> forSession(
@@ -62,11 +66,12 @@ class TypicalWeatherService {
     if (years.isEmpty) {
       throw WeatherServiceException('No past weather is available yet.');
     }
-    var done = 0;
+    // One year at a time, to stay under the per-minute limit.
     onProgress?.call(0, years.length);
-    final perYear = await Future.wait([
-      for (final year in years)
-        _retry(
+    final perYear = <List<PastHour>>[];
+    for (final year in years) {
+      perYear.add(
+        await _retry(
           () => weather.fetchHistory(
             place: place,
             firstDay: DateTime.utc(
@@ -80,11 +85,10 @@ class TypicalWeatherService {
               date.day + fingerprintDaySpread + extraDays,
             ),
           ),
-        ).then((hours) {
-          onProgress?.call(++done, years.length);
-          return hours;
-        }),
-    ]);
+        ),
+      );
+      onProgress?.call(perYear.length, years.length);
+    }
     final history = [for (final h in perYear) ...h];
     final hours = typicalHours(
       history: history,
@@ -195,10 +199,16 @@ class TypicalWeatherService {
   }
 
   Future<T> _retry<T>(Future<T> Function() action) async {
+    var waitedForLimit = false;
     for (var attempt = 1; ; attempt++) {
       try {
         return await action();
       } on WeatherServiceException catch (e) {
+        if (e.perMinuteLimit && !waitedForLimit) {
+          waitedForLimit = true;
+          await Future<void>.delayed(limitWait);
+          continue;
+        }
         if (!e.retryable || attempt >= 3) rethrow;
         await Future<void>.delayed(retryDelay * attempt);
       }

@@ -46,11 +46,18 @@ abstract class WeatherService {
 }
 
 class WeatherServiceException implements Exception {
-  WeatherServiceException(this.message, {this.retryable = true});
+  WeatherServiceException(
+    this.message, {
+    this.retryable = true,
+    this.perMinuteLimit = false,
+  });
   final String message;
 
   /// False when trying again soon cannot help (e.g. the daily limit).
   final bool retryable;
+
+  /// The free tier's per-minute limit: waiting about a minute helps.
+  final bool perMinuteLimit;
 
   @override
   String toString() => message;
@@ -159,22 +166,25 @@ class OpenMeteoWeatherService implements WeatherService {
     if (hourly == null || times == null) return const [];
     return [
       for (var i = 0; i < times.length; i++)
-        HourWeather(
-          time: DateTime.parse(times[i] as String),
-          temperatureC: _number(hourly['temperature_2m'], i),
-          apparentC: _number(hourly['apparent_temperature'], i),
-          humidityPercent: _number(hourly['relative_humidity_2m'], i),
-          precipProbabilityPercent: _number(
-            hourly['precipitation_probability'],
-            i,
+        // An hour without a temperature is unknown, not 0 °C: skip it.
+        if (_maybeNumber(hourly['temperature_2m'], i) != null &&
+            _maybeNumber(hourly['apparent_temperature'], i) != null)
+          HourWeather(
+            time: DateTime.parse(times[i] as String),
+            temperatureC: _number(hourly['temperature_2m'], i),
+            apparentC: _number(hourly['apparent_temperature'], i),
+            humidityPercent: _number(hourly['relative_humidity_2m'], i),
+            precipProbabilityPercent: _number(
+              hourly['precipitation_probability'],
+              i,
+            ),
+            precipitationMm: _number(hourly['precipitation'], i),
+            windKmh: _number(hourly['wind_speed_10m'], i),
+            gustKmh: _number(hourly['wind_gusts_10m'], i),
+            weatherCode: _number(hourly['weather_code'], i).round(),
+            isDay: _number(hourly['is_day'], i) > 0,
+            radiationWm2: _number(hourly['shortwave_radiation'], i),
           ),
-          precipitationMm: _number(hourly['precipitation'], i),
-          windKmh: _number(hourly['wind_speed_10m'], i),
-          gustKmh: _number(hourly['wind_gusts_10m'], i),
-          weatherCode: _number(hourly['weather_code'], i).round(),
-          isDay: _number(hourly['is_day'], i) > 0,
-          radiationWm2: _number(hourly['shortwave_radiation'], i),
-        ),
     ];
   }
 
@@ -285,8 +295,9 @@ class OpenMeteoWeatherService implements WeatherService {
     }
     if (response.statusCode == 429) {
       final body = response.body.toLowerCase();
+      final perMinute = body.contains('minutely');
       throw WeatherServiceException(
-        body.contains('minutely')
+        perMinute
             ? 'The free weather service is busy with requests from this '
                   'connection — wait a minute and try again.'
             : body.contains('hourly')
@@ -295,6 +306,7 @@ class OpenMeteoWeatherService implements WeatherService {
             : 'The free weather service has had too many requests from this '
                   'internet connection today. Try again later.',
         retryable: false,
+        perMinuteLimit: perMinute,
       );
     }
     if (response.statusCode != 200) {
@@ -306,8 +318,8 @@ class OpenMeteoWeatherService implements WeatherService {
     return jsonDecode(response.body);
   }
 
-  /// Far-horizon hours occasionally come back null; treat those as 0
-  /// rather than crashing.
+  /// For secondary values (rain, wind...) a far-horizon null counts as 0;
+  /// hours missing their temperature are skipped before this is used.
   static double _number(Object? list, int index) {
     if (list is! List || index >= list.length) return 0;
     final value = list[index];

@@ -228,12 +228,18 @@ class PrefsStore {
 
   /// Remembers a session the user opened. Reopening the same session keeps
   /// its packing ticks and answer.
+  /// Saves the session the user just looked at. Looking at other start
+  /// times or places for the same sport and day replaces an earlier,
+  /// untouched look (nothing packed, not answered), so the feedback card
+  /// later asks about the plan the user actually chose.
   Future<void> recordSession(SessionRecord record) {
     final others = <SessionRecord>[];
     SessionRecord? existing;
     for (final r in sessionRecords) {
       if (r.id == record.id) {
         existing = r;
+      } else if (_justComparing(r, record)) {
+        continue;
       } else {
         others.add(r);
       }
@@ -247,6 +253,14 @@ class PrefsStore {
           );
     return _saveSessions([merged, ...others]);
   }
+
+  static bool _justComparing(SessionRecord old, SessionRecord now) =>
+      old.sport == now.sport &&
+      old.status == SessionStatus.pending &&
+      old.packed.isEmpty &&
+      old.start.year == now.start.year &&
+      old.start.month == now.start.month &&
+      old.start.day == now.start.day;
 
   Future<void> updateSession(
     String id,

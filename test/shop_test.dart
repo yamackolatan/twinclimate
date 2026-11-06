@@ -219,6 +219,18 @@ void main() {
       );
     });
 
+    test('a swim session does not add a wetsuit to a marathon kit', () {
+      final picks = raceKit(
+        race: _race(runPresets.last.legs),
+        conditions: _stats(temp: 12),
+        sport: Sport.swim,
+        count: 10,
+      );
+      final types = picks.map((p) => p.product.category).toSet();
+      expect(types, isNot(contains('swim_wetsuit')));
+      expect(types, isNot(contains('swim_goggles')));
+    });
+
     test('owned types stay, marked as owned', () {
       final picks = raceKit(
         race: _race(triathlonPresets.last.legs),

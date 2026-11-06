@@ -122,5 +122,15 @@ void main() {
     await tester.tap(find.text('Cap with a brim'));
     await tester.pump();
     expect(find.textContaining('1 /'), findsOneWidget);
+
+    // Ticking marks the item as owned, which redraws the page and builds
+    // the kit list afresh: the tick must survive that.
+    await tester.pumpAndSettle();
+    expect(find.textContaining('1 /'), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    await tester.tap(find.text('Shorts'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('2 /'), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle), findsNWidgets(2));
   });
 }

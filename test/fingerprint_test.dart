@@ -284,15 +284,64 @@ void main() {
       ).compute(ironmanKalmar()),
       throwsA(isA<WeatherServiceException>()),
     );
-    expect(limited.requests, hasLength(10));
+    // Years are fetched one at a time, so the first refusal stops it.
+    expect(limited.requests, hasLength(1));
+  });
+
+  test('years are downloaded one at a time', () async {
+    final service = ConcurrencyHistoryService();
+    final fp = await FingerprintService(
+      service,
+      clock: () => today,
+    ).compute(ironmanKalmar());
+    expect(fp.yearCount, 10);
+    expect(service.maxInFlight, 1);
+  });
+
+  test('the per-minute limit waits once, then carries on', () async {
+    final busy = FlakyHistoryService(1, retryable: false, perMinute: true);
+    final fp = await FingerprintService(
+      busy,
+      clock: () => today,
+      retryDelay: Duration.zero,
+      limitWait: Duration.zero,
+    ).compute(ironmanKalmar());
+    expect(fp.yearCount, 10);
   });
 }
 
+class ConcurrencyHistoryService extends FakeHistoryService {
+  int _inFlight = 0;
+  int maxInFlight = 0;
+
+  @override
+  Future<List<PastHour>> fetchHistory({
+    required Place place,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  }) async {
+    _inFlight++;
+    if (_inFlight > maxInFlight) maxInFlight = _inFlight;
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+    _inFlight--;
+    return super.fetchHistory(
+      place: place,
+      firstDay: firstDay,
+      lastDay: lastDay,
+    );
+  }
+}
+
 class FlakyHistoryService extends FakeHistoryService {
-  FlakyHistoryService(this.failuresPerYear, {this.retryable = true});
+  FlakyHistoryService(
+    this.failuresPerYear, {
+    this.retryable = true,
+    this.perMinute = false,
+  });
 
   final int failuresPerYear;
   final bool retryable;
+  final bool perMinute;
   final _failures = <int, int>{};
 
   @override
@@ -305,7 +354,11 @@ class FlakyHistoryService extends FakeHistoryService {
     if (seen < failuresPerYear) {
       _failures[firstDay.year] = seen + 1;
       requests.add((firstDay, lastDay));
-      throw WeatherServiceException('stalled', retryable: retryable);
+      throw WeatherServiceException(
+        'stalled',
+        retryable: retryable,
+        perMinuteLimit: perMinute,
+      );
     }
     return super.fetchHistory(
       place: place,

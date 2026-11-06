@@ -424,6 +424,43 @@ void main() {
       expect(r.status, SessionStatus.answered);
     });
 
+    test(
+      'comparing start times keeps only the last look for that day',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final store = await PrefsStore.load();
+        await store.recordSession(
+          session(start: DateTime(2026, 10, 18, 7), id: 'seven'),
+        );
+        await store.recordSession(
+          session(start: DateTime(2026, 10, 18, 9), id: 'nine'),
+        );
+        expect(store.sessionRecords.map((r) => r.id), ['nine']);
+
+        // A look the user acted on (packed) stays; so do other days/sports.
+        await store.updateSession('nine', (r) => r.copyWith(packed: {'Cap'}));
+        await store.recordSession(
+          session(start: DateTime(2026, 10, 18, 11), id: 'eleven'),
+        );
+        await store.recordSession(
+          session(start: DateTime(2026, 10, 19, 9), id: 'next day'),
+        );
+        await store.recordSession(
+          session(
+            start: DateTime(2026, 10, 18, 9),
+            id: 'ride',
+            sport: Sport.bike,
+          ),
+        );
+        expect(store.sessionRecords.map((r) => r.id).toSet(), {
+          'nine',
+          'eleven',
+          'next day',
+          'ride',
+        });
+      },
+    );
+
     test('feedback, sliders, forget and reset', () async {
       SharedPreferences.setMockInitialValues({});
       final store = await PrefsStore.load();

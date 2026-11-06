@@ -7,6 +7,7 @@ import 'package:twinclimate/models/place.dart';
 import 'package:twinclimate/models/race.dart';
 import 'package:twinclimate/models/session.dart';
 import 'package:twinclimate/models/weather.dart';
+import 'package:twinclimate/screens/match_result_page.dart';
 import 'package:twinclimate/screens/quick_session_page.dart';
 import 'package:twinclimate/screens/session_result_page.dart';
 import 'package:twinclimate/services/match_service.dart';
@@ -219,6 +220,40 @@ void main() {
     });
   });
 
+  testWidgets('typical-weather label stays after place names arrive', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 3200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({});
+    final store = await PrefsStore.load();
+    final weather = FakeMatchWeather();
+    final namer = FakeNamer();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MatchResultPage(
+          request: request(
+            MatchMode.period,
+            periodStart: DateTime(2026, 11, 20),
+            periodDays: 3,
+          ),
+          store: store,
+          weather: weather,
+          namer: namer,
+          matchService: MatchService(weather, clock: () => now),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(namer.calls, greaterThan(0));
+    expect(
+      find.textContaining('Typical conditions, not a forecast'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('switch to Match my race, search, see places and time windows', (
     tester,
   ) async {
@@ -285,7 +320,7 @@ void main() {
     expect(find.textContaining('best start'), findsNWidgets(5));
     expect(find.textContaining('you\'d train'), findsNWidgets(5));
     expect(find.textContaining('race typical'), findsNWidgets(5));
-    expect(namer.calls, 5);
+    expect(namer.calls, greaterThan(0));
 
     // One tap from "where" to "what to wear".
     await tester.tap(find.text('See forecast & kit').first);

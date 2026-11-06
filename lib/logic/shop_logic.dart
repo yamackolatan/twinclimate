@@ -211,7 +211,11 @@ List<RaceKitPick> raceKit({
   final humid = conditions.humidity.mean >= 70;
   final wet = conditions.rainChance >= 0.3;
   final windy = conditions.wind.mean >= 15;
-  final sports = {for (final leg in race.legs) leg.sport, sport};
+  // The race's own sports: training for a marathon with a swim session
+  // must not put a wetsuit in the marathon's race-day kit.
+  final sports = race.legs.isEmpty
+      ? {sport}
+      : {for (final leg in race.legs) leg.sport};
   final long = race.totalMinutes >= 90;
   final wants = <(String, String)>[
     if (sports.contains(Sport.swim))

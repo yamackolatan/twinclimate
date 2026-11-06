@@ -207,12 +207,17 @@ class _SessionResultPageState extends State<SessionResultPage> {
                   : 'Something went wrong while loading the forecast.',
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => setState(() => _forecast = _load()),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Try again'),
-            ),
+            // A daily or hourly limit won't lift in seconds: no button.
+            if (error is! WeatherServiceException ||
+                error.retryable ||
+                error.perMinuteLimit) ...[
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () => setState(() => _forecast = _load()),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Try again'),
+              ),
+            ],
           ],
         ),
       ),

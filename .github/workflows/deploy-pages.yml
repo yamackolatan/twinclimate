@@ -14,7 +14,9 @@ on:
   push:
     branches:
       - main
-      - 'claude/**'
+      # The one branch GitHub Pages is allowed to publish from. Other
+      # branches used to start a publish that failed and cancelled this one.
+      - 'claude/relaxed-brown-be0mcz'
   workflow_dispatch:
 
 permissions:

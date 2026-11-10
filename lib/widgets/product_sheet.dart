@@ -153,7 +153,11 @@ class ProductTile extends StatelessWidget {
 
   Future<void> _open() async {
     await store?.countShop('clicked', product.id);
-    await launchUrl(Uri.parse(product.url), webOnlyWindowName: '_blank');
+    await launchUrl(
+      Uri.parse(product.url),
+      mode: LaunchMode.externalApplication,
+      webOnlyWindowName: '_blank',
+    );
   }
 
   @override
@@ -165,8 +169,6 @@ class ProductTile extends StatelessWidget {
     );
     final meta = [?product.brand, ?product.priceLabel].join(' · ');
     return Card(
-      elevation: 0,
-      color: scheme.surfaceContainerLow,
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),

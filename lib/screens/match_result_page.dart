@@ -17,6 +17,7 @@ import '../services/prefs_store.dart';
 import '../services/weather_service.dart';
 import '../widgets/product_sheet.dart';
 import 'session_result_page.dart';
+import '../theme.dart';
 
 /// Race Matching results (F3): the best places and time windows to train
 /// in race-like conditions.
@@ -82,7 +83,8 @@ class _MatchResultPageState extends State<MatchResultPage> {
       setState(
         () => _error = e is WeatherServiceException
             ? e.message
-            : 'Something went wrong while searching: $e',
+            : 'Something went wrong while searching. Check your internet '
+                  'connection and try again.',
       );
     }
   }
@@ -177,6 +179,7 @@ class _MatchResultPageState extends State<MatchResultPage> {
         'https://www.openstreetmap.org/?mlat=$lat&mlon=$lon'
         '#map=13/$lat/$lon',
       ),
+      mode: LaunchMode.externalApplication,
       webOnlyWindowName: '_blank',
     );
   }
@@ -191,7 +194,7 @@ class _MatchResultPageState extends State<MatchResultPage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: pagePadding(context),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -251,8 +254,6 @@ class _MatchResultPageState extends State<MatchResultPage> {
   Widget _progress() {
     final theme = Theme.of(context);
     return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -270,7 +271,6 @@ class _MatchResultPageState extends State<MatchResultPage> {
   Widget _errorBox() {
     final theme = Theme.of(context);
     return Card(
-      elevation: 0,
       color: theme.colorScheme.errorContainer,
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -318,7 +318,6 @@ class _MatchResultPageState extends State<MatchResultPage> {
       if (result.typical != null) _typicalBanner(result.typical!),
       if (weak)
         Card(
-          elevation: 0,
           color: theme.colorScheme.tertiaryContainer,
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -401,8 +400,6 @@ extension on _MatchResultPageState {
     if (picks.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
     return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
         leading: const Icon(Icons.shopping_bag_outlined),
@@ -449,7 +446,6 @@ class _TypicalNote extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Card(
-      elevation: 0,
       color: scheme.tertiaryContainer,
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -499,46 +495,106 @@ class _ResultCard extends StatelessWidget {
     );
     final details = spotDetails(result.spot);
     final good = result.best.score >= goodMatchScore;
+    final scheme = theme.colorScheme;
+    final accent = good ? scheme.primary : scheme.tertiary;
+    final c = result.best.conditions;
+    final t = target.stats;
     return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
       margin: const EdgeInsets.only(bottom: 12),
+      // The best match stands out with an outline.
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: rank == 1
+            ? BorderSide(color: scheme.primary, width: 2)
+            : BorderSide.none,
+      ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: rank == 1
+                      ? scheme.primary
+                      : scheme.surfaceContainerHighest,
+                  foregroundColor: rank == 1
+                      ? scheme.onPrimary
+                      : scheme.onSurfaceVariant,
                   child: Text(
-                    '$rank. ${spotTitle(result.spot)}',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                    '$rank',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        spotTitle(result.spot),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (details.isNotEmpty) Text(details, style: muted),
+                    ],
                   ),
-                  decoration: BoxDecoration(
-                    color: good
-                        ? theme.colorScheme.primaryContainer
-                        : theme.colorScheme.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    '${scoreText(result.best.score)} match',
-                    style: theme.textTheme.labelLarge,
+                ),
+                const SizedBox(width: 8),
+                // Match score as a ring.
+                Semantics(
+                  label: '${scoreText(result.best.score)} match',
+                  excludeSemantics: true,
+                  child: SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 52,
+                          height: 52,
+                          child: CircularProgressIndicator(
+                            value: result.best.score / 100,
+                            strokeWidth: 5,
+                            strokeCap: StrokeCap.round,
+                            color: accent,
+                            backgroundColor: scheme.surfaceContainerHighest,
+                          ),
+                        ),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              scoreText(result.best.score),
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                height: 1,
+                              ),
+                            ),
+                            Text(
+                              'match',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontSize: 9,
+                                height: 1.1,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
-            if (details.isNotEmpty) Text(details, style: muted),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               bestStartText(result, typicalDay: typicalPeriod),
               style: theme.textTheme.bodyMedium,
@@ -551,10 +607,38 @@ class _ResultCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _ScoreBars(result: result),
-            const SizedBox(height: 8),
-            Text(
-              comparisonParts(result.best.conditions, target.stats).join(' · '),
+            const SizedBox(height: 12),
+            Text('Here vs race typical', style: muted),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                _compare(
+                  context,
+                  Icons.thermostat,
+                  '${c.temperature.round()}°C',
+                  '${t.temperature.mean.round()}°C',
+                ),
+                _compare(
+                  context,
+                  Icons.water_drop_outlined,
+                  '${c.humidity.round()}%',
+                  '${t.humidity.mean.round()}%',
+                ),
+                _compare(
+                  context,
+                  Icons.air,
+                  '${c.wind.round()} km/h',
+                  '${t.wind.mean.round()} km/h',
+                ),
+                _compare(
+                  context,
+                  Icons.umbrella_outlined,
+                  '${(c.rainLikelihood * 100).round()}%',
+                  '${(t.rainChance * 100).round()}%',
+                ),
+              ],
             ),
+            const SizedBox(height: 4),
             Wrap(
               spacing: 8,
               children: [
@@ -572,6 +656,37 @@ class _ResultCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// One "here vs race" figure: icon, the value here, the race's value.
+  Widget _compare(
+    BuildContext context,
+    IconData icon,
+    String here,
+    String race,
+  ) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, size: 18, color: scheme.primary),
+          const SizedBox(height: 2),
+          Text(
+            here,
+            style: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            'race $race',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }

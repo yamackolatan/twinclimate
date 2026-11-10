@@ -195,7 +195,6 @@ class _FeedbackCardState extends State<FeedbackCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      elevation: 0,
       color: theme.colorScheme.secondaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -211,7 +210,14 @@ class _FeedbackCardState extends State<FeedbackCard> {
               _Step.saving => [
                 const Padding(
                   padding: EdgeInsets.all(8),
-                  child: LinearProgressIndicator(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Checking what the weather really was…'),
+                      SizedBox(height: 8),
+                      LinearProgressIndicator(),
+                    ],
+                  ),
                 ),
               ],
               _Step.done => _doneStep(theme),

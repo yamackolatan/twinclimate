@@ -1,4 +1,5 @@
 import '../models/session.dart';
+import 'gear_engine.dart' show twilight;
 import '../models/weather.dart';
 
 /// A clearly better start time on the same day, with the reason.
@@ -48,7 +49,8 @@ BetterTime? betterTime({
     final rise = f.sunrise;
     final set = f.sunset;
     final dark = rise != null && set != null
-        ? p.start.isBefore(rise) || p.end.isAfter(set)
+        ? p.start.isBefore(rise.subtract(twilight)) ||
+              p.end.isAfter(set.add(twilight))
         : covered.any((h) => !h.isDay);
     return _Look(f, dark);
   }

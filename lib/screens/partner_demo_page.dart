@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/decathlon_catalogue.dart';
 import '../models/product.dart';
 import '../services/prefs_store.dart';
+import '../theme.dart';
 
 /// What a retail partner would see: how often suggestions were shown,
 /// opened and clicked through to the shop. Counted on this device only —
@@ -47,7 +48,7 @@ class _PartnerDemoPageState extends State<PartnerDemoPage> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: pagePadding(context),
             children: [
               Text(
                 'How shopping suggestions perform',
@@ -90,7 +91,6 @@ class _PartnerDemoPageState extends State<PartnerDemoPage> {
               ..._rows(top('clicked'), (id) => products[id]?.name ?? id, muted),
               const SizedBox(height: 24),
               Card(
-                elevation: 0,
                 color: theme.colorScheme.secondaryContainer,
                 child: Padding(
                   padding: const EdgeInsets.all(16),

@@ -154,11 +154,14 @@ class _KitChecklistState extends State<KitChecklist> {
             ),
           ),
           const SizedBox(width: 8),
-          Text(
-            empty ? '· nothing extra needed' : '· $count',
-            style: Theme.of(
-              context,
-            ).textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
+          Flexible(
+            child: Text(
+              empty ? '· nothing extra needed' : '· $count',
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
+            ),
           ),
         ],
       ),
@@ -172,7 +175,6 @@ class _KitChecklistState extends State<KitChecklist> {
     final shop = widget.onShop != null && widget.shopItems.contains(item);
 
     return Card(
-      elevation: 0,
       margin: const EdgeInsets.only(bottom: 6),
       color: isPacked
           ? scheme.surfaceContainerHighest

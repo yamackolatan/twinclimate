@@ -82,3 +82,8 @@ List<Color> feelGradient(double feelsC, Brightness brightness) {
   // Slightly deeper in dark mode so the card doesn't glare.
   return [for (final c in colors) Color.lerp(c, Colors.black, 0.25)!];
 }
+
+/// Padding for a scrolling page: 16 all round, plus room at the bottom for
+/// the iPhone home indicator so the last button is never underneath it.
+EdgeInsets pagePadding(BuildContext context) =>
+    EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.paddingOf(context).bottom);

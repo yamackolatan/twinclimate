@@ -429,6 +429,26 @@ Replaced by the two shopping features (F5a, F5b) below.
 - Open-Meteo's free API is for non-commercial use: if the app ever earns
   money, move to their paid API (key) and tell the owner.
 
+### Second review (owner-approved, Nov 2026 — build to these)
+- European conventions app-wide: locale `en_GB` (weeks start Monday) and
+  24-hour clock (`lib/main.dart`, `flutter_localizations`).
+- Every scrolling page uses `pagePadding(context)` (`lib/theme.dart`) so
+  content clears the iPhone home indicator. Cards take their look from
+  `AppTheme` — don't hand-style `elevation`/`surfaceContainerLow`.
+- Lights/"dark" advice and the better-time hint allow 20 min of twilight
+  (`twilight` in `lib/logic/gear_engine.dart`).
+- Race Matching remembers travel range, date/period mode and 7/14 days
+  (`PrefsStore.rememberMatch`). Race detail has a colour headline and a
+  "Find where to train like this" button that returns to the home screen
+  in Match mode for that race. Match result cards: rank badge, score ring,
+  "Here vs race typical" grid; the best match is outlined.
+- Race form asks before discarding unsaved changes. Loading screens say
+  what they're doing; error messages never show raw exception text; links
+  open in the system browser (`LaunchMode.externalApplication`).
+- Known limitation (not fixed): "now" comes from the phone's clock, so for
+  places in another time zone "Now", "start time has passed" and "1 h
+  earlier" can be off by the time difference.
+
 ### Later phases (do NOT start without the owner asking)
 - V2: exact route suggestions (OSM/Overpass + loop generation, elevation,
   surface), cycling-specific matching, Turkish localization.

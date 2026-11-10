@@ -118,6 +118,45 @@ class PrefsStore {
     await _prefs.setInt(_kStartMinute, minute);
   }
 
+  static const _kMatchRange = 'matchRangeKm';
+  static const _kMatchPeriodMode = 'matchPeriodMode';
+  static const _kMatchPeriodDays = 'matchPeriodDays';
+
+  /// Race Matching choices, remembered between visits ("ask once").
+  double get matchRangeKm {
+    try {
+      return (_prefs.getDouble(_kMatchRange) ?? 50).clamp(10, 300).toDouble();
+    } catch (_) {
+      return 50;
+    }
+  }
+
+  bool get matchPeriodMode {
+    try {
+      return _prefs.getBool(_kMatchPeriodMode) ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  int get matchPeriodDays {
+    try {
+      return _prefs.getInt(_kMatchPeriodDays) == 7 ? 7 : 14;
+    } catch (_) {
+      return 14;
+    }
+  }
+
+  Future<void> rememberMatch({
+    required double rangeKm,
+    required bool periodMode,
+    required int periodDays,
+  }) async {
+    await _prefs.setDouble(_kMatchRange, rangeKm);
+    await _prefs.setBool(_kMatchPeriodMode, periodMode);
+    await _prefs.setInt(_kMatchPeriodDays, periodDays);
+  }
+
   /// When the user can train, for Race Matching ("ask once").
   TrainingWindow get trainingWindow {
     const defaults = TrainingWindow();

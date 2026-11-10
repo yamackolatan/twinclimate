@@ -22,6 +22,7 @@ import 'match_result_page.dart';
 import 'my_gear_page.dart';
 import 'partner_demo_page.dart';
 import 'session_result_page.dart';
+import '../theme.dart';
 
 /// The default screen: plan a training session in a few taps and get
 /// conditions + kit advice (F1 in the PRD).
@@ -58,12 +59,22 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
   };
   late bool _pool = widget.store.swimInPool;
 
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
   // Race Matching (F3) settings.
   bool _matching = false;
   String? _raceId;
-  double _rangeKm = 50;
-  MatchMode _mode = MatchMode.specificDate;
-  int _periodDays = 14;
+  late double _rangeKm = widget.store.matchRangeKm;
+  late MatchMode _mode = widget.store.matchPeriodMode
+      ? MatchMode.period
+      : MatchMode.specificDate;
+  late int _periodDays = widget.store.matchPeriodDays;
 
   /// The user's own dates for "Best day in a period"; null when a
   /// "Next 7/14 days" chip is chosen.
@@ -355,6 +366,11 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     await widget.store.rememberPlace(place);
     await widget.store.rememberSport(_sport);
     await widget.store.rememberDistance(_sport, _distanceKm[_sport]!);
+    await widget.store.rememberMatch(
+      rangeKm: _rangeKm,
+      periodMode: _mode == MatchMode.period,
+      periodDays: _periodDays,
+    );
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -450,11 +466,12 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
         ],
       ),
       body: SingleChildScrollView(
+        controller: _scroll,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: pagePadding(context),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -483,6 +500,7 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                         ),
                       ],
                       selected: {matching},
+                      showSelectedIcon: false,
                       onSelectionChanged: (selection) =>
                           setState(() => _matching = selection.first),
                     ),
@@ -536,8 +554,6 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                       child: Text('Starting point', style: muted),
                     ),
                   Card(
-                    elevation: 0,
-                    color: Theme.of(context).colorScheme.surfaceContainerLow,
                     child: Column(
                       children: [
                         ListTile(
@@ -715,6 +731,17 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                     store: widget.store,
                     weather: widget.weather,
                     onChanged: () => setState(() {}),
+                    onMatch: (raceId) {
+                      setState(() {
+                        _matching = true;
+                        _raceId = raceId;
+                      });
+                      _scroll.animateTo(
+                        0,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                      );
+                    },
                   ),
                 ],
               ),
@@ -731,6 +758,9 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     return [
       if (races.length > 1)
         DropdownButtonFormField<String>(
+          // Rebuilt when the chosen race changes or is deleted, so the
+          // field never holds a race that no longer exists.
+          key: ValueKey('${race.id}/${races.length}'),
           initialValue: race.id,
           decoration: const InputDecoration(
             labelText: 'Race to match',
@@ -1058,8 +1088,6 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     required VoidCallback onTap,
   }) {
     return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: ListTile(leading: Icon(icon), title: Text(label), onTap: onTap),
     );
   }

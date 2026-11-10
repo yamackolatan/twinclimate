@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../services/prefs_store.dart';
 import '../widgets/product_sheet.dart';
+import '../theme.dart';
 
 /// Gear the user already has (from "I already have this" or packing
 /// ticks; their shop links then show other models) — plus the switch that
@@ -35,7 +36,7 @@ class _MyGearPageState extends State<MyGearPage> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: pagePadding(context),
             children: [
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,

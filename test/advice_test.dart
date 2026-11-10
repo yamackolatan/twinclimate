@@ -85,6 +85,17 @@ void main() {
       expect(lights.reason, contains('sunset is at 17:05'));
     });
 
+    test('twilight counts as light: no lights just after sunset', () {
+      // 5 km run 16:45-17:15; sunset 17:05 -> within 20 min of twilight.
+      final p = SessionPlan(
+        sport: Sport.run,
+        place: presetPlaces.first,
+        start: DateTime(_day.year, _day.month, _day.day, 16, 45),
+        distanceKm: 5,
+      );
+      expect(names(kitFor(p)), isNot(contains('Headlamp or chest light')));
+    });
+
     test('a daylight run gets no lights', () {
       expect(
         names(kitFor(plan(10))),

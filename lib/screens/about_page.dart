@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_config.dart';
+import '../theme.dart';
 
 /// Where the app's public pages live (GitHub Pages).
 const String siteUrl = 'https://yamackolatan.github.io/twinclimate';
@@ -28,7 +29,7 @@ class AboutPage extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: pagePadding(context),
             children: [
               Text('TwinClimate', style: text.headlineSmall),
               Text('Version $appVersion', style: muted),

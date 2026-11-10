@@ -203,6 +203,9 @@ Map<BodyPart, String> mainSuggestions(List<GearItem> kit) {
   return result;
 }
 
+/// Usable light before sunrise and after sunset.
+const Duration twilight = Duration(minutes: 20);
+
 class _KitBuilder {
   _KitBuilder(this.sport, this.f, this.distanceKm, this.steps, this.timing);
 
@@ -862,10 +865,12 @@ class _KitBuilder {
     final rise = f.sunrise;
     final set = f.sunset;
     if (start != null && end != null && rise != null && set != null) {
-      if (start.isBefore(rise)) {
+      // About 20 minutes either side of sunrise/sunset is still light
+      // enough (twilight), so lights aren't suggested for that.
+      if (start.isBefore(rise.subtract(twilight))) {
         return 'Still dark at the start — sunrise is at ${formatTime(rise)}';
       }
-      if (end.isAfter(set)) {
+      if (end.isAfter(set.add(twilight))) {
         return start.isAfter(set)
             ? 'It\'s dark — sunset was at ${formatTime(set)}'
             : 'Dark before you finish — sunset is at ${formatTime(set)}';

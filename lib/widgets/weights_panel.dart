@@ -19,7 +19,6 @@ class WeightsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final share = weights.normalised;
     Widget row(
       String label,
@@ -46,8 +45,6 @@ class WeightsPanel extends StatelessWidget {
     );
 
     return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
         leading: const Icon(Icons.tune),

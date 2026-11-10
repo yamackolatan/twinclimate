@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   geolocator: ^14.1.2
   http: ^1.2.0
   share_plus: ^13.3.1

@@ -4,6 +4,7 @@ import '../models/comfort.dart';
 import '../models/gear.dart';
 import '../models/session.dart';
 import '../services/prefs_store.dart';
+import '../theme.dart';
 
 /// Settings → Comfort profile (F4): optional sliders per body part, what
 /// the app has learned from feedback, and recent answers.
@@ -94,7 +95,7 @@ class _ComfortProfilePageState extends State<ComfortProfilePage> {
     ].take(10).toList();
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: pagePadding(context),
       children: [
         Center(
           child: ConstrainedBox(

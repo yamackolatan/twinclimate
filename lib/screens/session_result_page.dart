@@ -247,7 +247,26 @@ class _SessionResultPageState extends State<SessionResultPage> {
         future: _forecast,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    Text(
+                      _isTypical
+                          ? 'Looking at 10 years of weather for '
+                                '${plan.place.name}…\nThis can take a little '
+                                'while.'
+                          : 'Getting the forecast for ${plan.place.name}…',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
           if (snapshot.hasError) {
             return _errorView(context, snapshot.error);
@@ -409,7 +428,7 @@ class _SessionResultPageState extends State<SessionResultPage> {
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: wide ? 1200 : 640),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: pagePadding(context),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -433,7 +452,7 @@ class _SessionResultPageState extends State<SessionResultPage> {
     final start = forecast.atStart;
     final text = Theme.of(context).textTheme;
     const onHero = Colors.white;
-    final soft = Colors.white.withValues(alpha: 0.85);
+    final soft = Colors.white.withValues(alpha: 0.95);
     final colors = feelGradient(
       forecast.kitFeelsC,
       Theme.of(context).brightness,
@@ -532,7 +551,6 @@ class _SessionResultPageState extends State<SessionResultPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Card(
-        elevation: 0,
         color: scheme.secondaryContainer,
         child: ListTile(
           leading: Icon(Icons.schedule, color: scheme.onSecondaryContainer),
@@ -562,7 +580,6 @@ class _SessionResultPageState extends State<SessionResultPage> {
     final range = t.feelsSpread;
     final from = forecastAvailableFrom(widget.plan.start);
     return Card(
-      elevation: 0,
       color: scheme.tertiaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(12),

@@ -24,21 +24,34 @@ class HourCards extends StatelessWidget {
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
-        child: hours.length <= _maxFitting
-            ? Row(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Share the width while every hour gets enough room (more is
+            // needed at large text sizes); otherwise scroll sideways.
+            final needed = MediaQuery.textScalerOf(context).scale(64);
+            final fits =
+                hours.length <= _maxFitting &&
+                constraints.maxWidth / hours.length >= needed;
+            if (fits) {
+              return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [for (final c in columns) Expanded(child: c)],
-              )
-            : SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final c in columns)
-                      SizedBox(width: _scrollColumnWidth, child: c),
-                  ],
-                ),
+              );
+            }
+            final width = needed > _scrollColumnWidth
+                ? needed
+                : _scrollColumnWidth;
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final c in columns) SizedBox(width: width, child: c),
+                ],
               ),
+            );
+          },
+        ),
       ),
     );
   }

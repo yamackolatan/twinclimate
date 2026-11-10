@@ -16,6 +16,7 @@ class RacesSection extends StatefulWidget {
     required this.store,
     required this.weather,
     this.onChanged,
+    this.onMatch,
   });
 
   final PrefsStore store;
@@ -23,6 +24,9 @@ class RacesSection extends StatefulWidget {
 
   /// Called after races may have been added, edited or deleted.
   final VoidCallback? onChanged;
+
+  /// The user asked to find training conditions for this race.
+  final void Function(String raceId)? onMatch;
 
   @override
   State<RacesSection> createState() => _RacesSectionState();
@@ -45,7 +49,7 @@ class _RacesSectionState extends State<RacesSection> {
   }
 
   Future<void> _open(Race race) async {
-    await Navigator.of(context).push(
+    final matchRaceId = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (context) => RaceDetailPage(
           raceId: race.id,
@@ -56,6 +60,7 @@ class _RacesSectionState extends State<RacesSection> {
     );
     if (mounted) setState(() {});
     widget.onChanged?.call();
+    if (matchRaceId != null) widget.onMatch?.call(matchRaceId);
   }
 
   @override
@@ -68,8 +73,6 @@ class _RacesSectionState extends State<RacesSection> {
 
     if (races.isEmpty) {
       return Card(
-        elevation: 0,
-        color: theme.colorScheme.surfaceContainerLow,
         child: ListTile(
           leading: const Icon(Icons.emoji_events_outlined),
           title: const Text('Training for a race?'),
@@ -113,11 +116,8 @@ class _RacesSectionState extends State<RacesSection> {
   }
 
   Widget _raceCard(Race race) {
-    final theme = Theme.of(context);
     final fingerprint = race.validFingerprint;
     return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
       child: ListTile(
         leading: Icon(
           race.isMultisport

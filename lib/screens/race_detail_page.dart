@@ -8,6 +8,7 @@ import '../services/fingerprint_service.dart';
 import '../services/prefs_store.dart';
 import '../services/weather_service.dart';
 import 'race_form_page.dart';
+import '../theme.dart';
 
 /// A saved race and its typical race-day climate (F2). Computes and caches
 /// the fingerprint the first time it is opened.
@@ -93,7 +94,8 @@ class _RaceDetailPageState extends State<RaceDetailPage> {
         _loading = false;
         _error = e is WeatherServiceException
             ? e.message
-            : 'Something went wrong while looking up past weather: $e';
+            : 'Something went wrong while looking up past weather. Check '
+                  'your internet connection and try again.';
       });
     }
   }
@@ -142,7 +144,7 @@ class _RaceDetailPageState extends State<RaceDetailPage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: pagePadding(context),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -150,8 +152,24 @@ class _RaceDetailPageState extends State<RaceDetailPage> {
                   const SizedBox(height: 16),
                   if (_loading) _progress(race),
                   if (_error != null) _errorBox(),
-                  if (fingerprint != null)
+                  if (fingerprint != null) ...[
                     _FingerprintView(race: race, fingerprint: fingerprint),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      // Hands the race back to the home screen, which
+                      // switches to "Match my race" for it.
+                      onPressed: () => Navigator.of(context).pop(race.id),
+                      icon: const Icon(Icons.travel_explore),
+                      label: const Text('Find where to train like this'),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Places and times near you where training feels '
+                      'like race day.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -164,8 +182,6 @@ class _RaceDetailPageState extends State<RaceDetailPage> {
   Widget _progress(Race race) {
     final theme = Theme.of(context);
     return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -191,7 +207,6 @@ class _RaceDetailPageState extends State<RaceDetailPage> {
   Widget _errorBox() {
     final theme = Theme.of(context);
     return Card(
-      elevation: 0,
       color: theme.colorScheme.errorContainer,
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -298,18 +313,39 @@ class _FingerprintView extends StatelessWidget {
       children: [
         Text('Race-day climate', style: theme.textTheme.titleLarge),
         const SizedBox(height: 8),
-        Card(
-          elevation: 0,
-          color: theme.colorScheme.primaryContainer,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              fingerprintHeadline(race, fingerprint),
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.w600,
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: feelGradient(
+                fingerprint.overall.temperature.mean,
+                theme.brightness,
               ),
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Text(
+                '${fingerprint.overall.temperature.mean.round()}°',
+                style: theme.textTheme.displaySmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  fingerprintHeadline(race, fingerprint),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         if (profile.isNotEmpty) ...[
@@ -331,8 +367,6 @@ class _FingerprintView extends StatelessWidget {
           const SizedBox(height: 8),
           for (final leg in fingerprint.legs)
             Card(
-              elevation: 0,
-              color: theme.colorScheme.surfaceContainerLow,
               clipBehavior: Clip.antiAlias,
               child: ExpansionTile(
                 leading: Icon(sportIcon(leg.sport)),

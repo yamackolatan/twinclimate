@@ -314,9 +314,9 @@ void main() {
       find.textContaining('Run leg 14:15–18:45: typically'),
       findsOneWidget,
     );
-    expect(find.textContaining('1. Village 1'), findsOneWidget);
-    expect(find.textContaining('5. Village 5'), findsOneWidget);
-    expect(find.textContaining('% match'), findsNWidgets(5));
+    expect(find.text('Village 1'), findsOneWidget);
+    expect(find.text('Village 5'), findsOneWidget);
+    expect(find.text('match'), findsNWidgets(5));
     expect(find.textContaining('best start'), findsNWidgets(5));
     expect(find.textContaining('you\'d train'), findsNWidgets(5));
     expect(find.textContaining('race typical'), findsNWidgets(5));
@@ -372,7 +372,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.textContaining('% match'), findsNWidgets(5));
+    expect(find.text('match'), findsNWidgets(5));
   });
 
   testWidgets('a training window shorter than the session blocks the search', (

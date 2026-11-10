@@ -461,6 +461,18 @@ void main() {
       },
     );
 
+    test('race-matching choices are remembered', () async {
+      SharedPreferences.setMockInitialValues({});
+      final store = await PrefsStore.load();
+      expect(store.matchRangeKm, 50);
+      expect(store.matchPeriodMode, isFalse);
+      await store.rememberMatch(rangeKm: 120, periodMode: true, periodDays: 7);
+      final again = await PrefsStore.load();
+      expect(again.matchRangeKm, 120);
+      expect(again.matchPeriodMode, isTrue);
+      expect(again.matchPeriodDays, 7);
+    });
+
     test('feedback, sliders, forget and reset', () async {
       SharedPreferences.setMockInitialValues({});
       final store = await PrefsStore.load();

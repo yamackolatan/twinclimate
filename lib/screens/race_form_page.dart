@@ -6,6 +6,7 @@ import '../models/session.dart';
 import '../services/prefs_store.dart';
 import '../services/weather_service.dart';
 import '../widgets/place_search_sheet.dart';
+import '../theme.dart';
 
 /// What the race form ended with.
 class RaceFormOutcome {
@@ -37,7 +38,12 @@ class RaceFormPage extends StatefulWidget {
 }
 
 class _RaceFormPageState extends State<RaceFormPage> {
-  late final _name = TextEditingController(text: widget.existing?.name ?? '');
+  late final TextEditingController _name =
+      TextEditingController(text: widget.existing?.name ?? '')..addListener(() {
+        if (!_dirty && mounted && _name.text != (widget.existing?.name ?? '')) {
+          setState(() {});
+        }
+      });
   Place? _place;
   DateTime? _date;
   TimeOfDay _time = const TimeOfDay(hour: 7, minute: 0);
@@ -74,6 +80,36 @@ class _RaceFormPageState extends State<RaceFormPage> {
   }
 
   bool get _isEditing => widget.existing != null;
+
+  /// Something was changed since the form opened (asks before leaving).
+  bool _dirty = false;
+
+  @override
+  void setState(VoidCallback fn) {
+    _dirty = true;
+    super.setState(fn);
+  }
+
+  Future<void> _confirmLeave() async {
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Discard changes?'),
+        content: const Text('This race hasn\'t been saved yet.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep editing'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    if (leave == true && mounted) Navigator.of(context).pop();
+  }
 
   List<RaceLeg> get _orderedLegs => [
     for (final sport in legOrder)
@@ -240,6 +276,16 @@ class _RaceFormPageState extends State<RaceFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmLeave();
+      },
+      child: _form(context),
+    );
+  }
+
+  Widget _form(BuildContext context) {
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
@@ -272,7 +318,7 @@ class _RaceFormPageState extends State<RaceFormPage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: pagePadding(context),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -300,7 +346,7 @@ class _RaceFormPageState extends State<RaceFormPage> {
                           icon: Icons.calendar_today,
                           title: _date == null
                               ? 'Race date'
-                              : formatFullDate(_date!),
+                              : '${formatDayMonth(_date!)} ${_date!.year}',
                           onTap: _pickDate,
                         ),
                       ),
@@ -396,8 +442,6 @@ class _RaceFormPageState extends State<RaceFormPage> {
     final leg = _legs[sport]!;
     final theme = Theme.of(context);
     return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         child: Column(
@@ -487,8 +531,6 @@ class _RaceFormPageState extends State<RaceFormPage> {
     required VoidCallback onTap,
   }) {
     return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: ListTile(
         leading: Icon(icon),
         title: Text(title),

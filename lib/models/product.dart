@@ -72,6 +72,16 @@ String _thousands(int n) {
 
 /// Human labels for product types, used in "See running rain jackets".
 const Map<String, String> productCategories = {
+  'run_light': 'running lights',
+  'hivis_vest': 'hi-vis vests',
+  'run_led_armband': 'LED armbands',
+  'bike_lights': 'bike light sets',
+  'swim_buoy': 'open-water swim buoys',
+  'swim_suit': 'swimsuits',
+  'swim_jammer': 'swim jammers',
+  'swim_slippers': 'pool slippers',
+  'run_shoes': 'running shoes',
+  'bike_shoes': 'cycling shoes',
   'run_headband': 'running headbands',
   'run_beanie': 'running beanies',
   'run_cap': 'running caps',

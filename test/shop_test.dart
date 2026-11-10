@@ -95,9 +95,32 @@ void main() {
                     ),
                     distanceKm: km,
                   );
-                  for (final item in kit) {
-                    if (!itemProductTypes.containsKey(item.name) &&
-                        !noShopItems.contains(item.name)) {
+                  // Also the timing-based advice: a long session in the
+                  // dark, and a pool swim.
+                  final dark = DateTime(2026, 11, 7, 5);
+                  final extras = [
+                    ...buildKit(
+                      sport,
+                      forecast(apparentC: t, radiation: sunny ? 700 : 0),
+                      distanceKm: km,
+                      timing: SessionTiming(
+                        start: dark,
+                        end: dark.add(const Duration(hours: 2)),
+                        durationHours: 2,
+                      ),
+                    ),
+                    if (sport == Sport.swim)
+                      ...buildKit(
+                        sport,
+                        forecast(apparentC: t),
+                        timing: const SessionTiming(pool: true),
+                      ),
+                  ];
+                  for (final item in [...kit, ...extras]) {
+                    if (noShopItems.contains(item.name)) continue;
+                    // Every suggestion must lead to at least one product.
+                    if (!itemProductTypes.containsKey(item.name) ||
+                        productsForItem(item).isEmpty) {
                       missing.add(item.name);
                     }
                   }
@@ -159,13 +182,19 @@ void main() {
       ),
     ];
 
-    test('at most 3, rain gear first, then torso, hands', () {
+    test('every item with a product gets a link, rain gear first', () {
       final offered = itemsToOffer(kit, catalogue: catalogue);
-      expect(offered.map((i) => i.name), [
+      expect(offered.map((i) => i.name).take(3), [
         'Light water-resistant jacket',
         'Short-sleeve tee',
         'Thin gloves',
       ]);
+      // No limit any more: each kit item the catalogue covers is offered.
+      final expected = [
+        for (final i in kit)
+          if (productsForItem(i, catalogue: catalogue).isNotEmpty) i.name,
+      ];
+      expect(offered.map((i) => i.name).toSet(), expected.toSet());
     });
 
     test('owned gear keeps its link (other models), marked as owned', () {
@@ -273,7 +302,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final links = find.text("Don't have one? See options at Decathlon");
-      expect(links, findsNWidgets(maxShopLinks));
+      // Every suggestion with a matching product has its link.
+      final linkCount = links.evaluate().length;
+      expect(linkCount, greaterThan(3));
       expect(
         store.shopStats.keys.where((k) => k.startsWith('shown:')),
         isNotEmpty,
@@ -297,7 +328,7 @@ void main() {
           .map((k) => k.substring('opened:'.length));
       expect(store.ownedTypes, containsAll(opened));
       // The link stays, now offering other models.
-      expect(links, findsNWidgets(maxShopLinks - 1));
+      expect(links, findsNWidgets(linkCount - 1));
       final otherModels = find.text(
         'You have one — see other models at Decathlon',
       );

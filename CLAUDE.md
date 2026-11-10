@@ -330,9 +330,10 @@ Replaced by the two shopping features (F5a, F5b) below.
   real names and links; price, rating and review count only where the
   listing showed them, otherwise null — never invented. Icon cards, no
   product photos.
-- **Not pushy rules:** at most 3 shop links per kit list (rain/wind gear
-  first, then torso, hands, head, legs, feet; optional items last); a
-  small text link, never a banner; one switch
+- **Not pushy rules:** ~~at most 3 shop links per kit list~~ — changed by
+  the owner in Nov 2026: **every kit suggestion gets a shop link** (the
+  limit left most items without one). Still a small text link, never a
+  banner; one switch
   turns all suggestions off (menu → My gear & shopping); the race-day kit
   is folded away until opened.
 - **Owned gear keeps its link (owner request, Oct 2026):** "I already have
@@ -396,8 +397,11 @@ Replaced by the two shopping features (F5a, F5b) below.
   ride out into the wind; "Better at HH:MM" hint scans ±4 h the same day
   (`lib/logic/best_time.dart`); Swim has Open water / Pool (pool kit, no
   neoprene); optional personal pace per sport (`formatPace`,
-  `paceChoices`). Lights/reflective gear have no shop link (not in the
-  catalogue — never invent products).
+  `paceChoices`). Since Nov 2026 lights, reflective gear, shoes, pool kit
+  and tow floats have catalogue products too (`noShopItems` is empty;
+  `test/shop_test.dart` fails if any suggestion has no product). New
+  products must be real decathlon.nl pages found via web search — never
+  invented.
 - **Look:** `lib/theme.dart` (AppTheme, `feelGradient`); colour headline
   card by felt temperature with a one-line verdict (`sessionVerdict`);
   hour timeline card with rain bars; kit rows tag rain (blue) / wind

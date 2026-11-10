@@ -9,6 +9,19 @@ import '../models/session.dart';
 /// Items not listed here never get a shop link (e.g. "Your usual running
 /// shoes", "Towel" kit the user certainly has, or advice-only items).
 const Map<String, List<String>> itemProductTypes = {
+  'Headlamp or chest light': ['run_light'],
+  'Reflective vest or bands': ['hivis_vest', 'run_led_armband'],
+  'Front and rear bike lights': ['bike_lights'],
+  'Reflective or bright top': ['hivis_vest'],
+  'Bright tow float with a light': ['swim_buoy'],
+  'Swimsuit': ['swim_suit', 'swim_jammer'],
+  'Warm layer for the trip home': ['swim_parka'],
+  'Pool slippers': ['swim_slippers'],
+  'Your usual running shoes': ['run_shoes'],
+  'Cycling shoes + socks': ['bike_shoes'],
+  'Towel': ['swim_towel'],
+  'Jammers / suit bottoms': ['swim_jammer'],
+  'Sandals for the shore': ['swim_slippers'],
   'Sunscreen (SPF 30+)': ['race_sunscreen'],
   'Water-resistant sunscreen': ['race_sunscreen'],
   'Handheld bottle or soft flask': ['race_softflask', 'race_bottle'],
@@ -132,25 +145,10 @@ const Map<String, List<String>> itemProductTypes = {
 };
 
 /// Kit items that intentionally never get a shop link.
-const Set<String> noShopItems = {
-  // Not in the demo catalogue: never invent products.
-  'Headlamp or chest light',
-  'Reflective vest or bands',
-  'Front and rear bike lights',
-  'Reflective or bright top',
-  'Bright tow float with a light',
-  'Swimsuit',
-  'Warm layer for the trip home',
-  'Pool slippers',
-  'Your usual running shoes',
-  'Cycling shoes + socks',
-  'Towel',
-  'Jammers / suit bottoms',
-  'Sandals for the shore',
-};
-
-/// At most this many shop links per kit screen (owner: not pushy).
-const int maxShopLinks = 3;
+/// Kit items with no matching product type. Empty since Nov 2026 (owner
+/// request: every suggestion gets a link); list an item here only when
+/// the catalogue truly has nothing for it — never invent products.
+const Set<String> noShopItems = {};
 
 /// Products of [category], best (popular and well rated) first.
 List<Product> productsFor(String category, {List<Product>? catalogue}) {
@@ -171,7 +169,9 @@ List<Product> productsForItem(GearItem item, {List<Product>? catalogue}) {
   ];
 }
 
-/// Which kit items get a shop link: up to [maxShopLinks], rain/wind items
+/// Which kit items get a shop link: every item the catalogue has a
+/// product for (owner request, Nov 2026 — the earlier limit of 3 left
+/// most suggestions without a link). Ordered with rain/wind items
 /// first, then the main garments; never items without products. Owning
 /// an item does not remove its link (owner, Oct 2026: people may still
 /// want to look at other models) — see [ownsItem] for the wording.
@@ -194,7 +194,7 @@ Set<GearItem> itemsToOffer(List<GearItem> kit, {List<Product>? catalogue}) {
           productsForItem(item, catalogue: catalogue).isNotEmpty)
         item,
   ]..sort((a, b) => priority(a).compareTo(priority(b)));
-  return candidates.take(maxShopLinks).toSet();
+  return candidates.toSet();
 }
 
 /// Whether the user said they have this kit item (all its product types

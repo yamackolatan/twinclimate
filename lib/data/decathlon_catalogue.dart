@@ -6,7 +6,7 @@
 import '../models/product.dart';
 
 /// When the prices and ratings below were copied from decathlon.nl.
-const String catalogueDate = 'Oct 2026';
+const String catalogueDate = 'Oct–Nov 2026';
 
 const List<Product> decathlonCatalogue = [
   Product(
@@ -990,5 +990,141 @@ const List<Product> decathlonCatalogue = [
     url: 'https://www.decathlon.nl/p/teenstukken-van-rysel/_/R-p-326664',
     priceEur: 14.99,
     fit: 'Neoprene toe covers, down to about 8–9 °C',
+  ),
+  // ---- Added Nov 2026 so every kit suggestion has a product link ----
+  Product(
+    id: 'run_light_1',
+    category: 'run_light',
+    name: 'Heuplamp voor hardlopen Runlight 120 usb zwart KIPRUN',
+    brand: 'KIPRUN',
+    url:
+        'https://www.decathlon.nl/p/heuplamp-voor-hardlopen-runlight-120-usb/_/R-p-313341',
+    fit: 'USB-rechargeable running light that clips on at the hip',
+  ),
+  Product(
+    id: 'hivis_vest_1',
+    category: 'hivis_vest',
+    name: 'Fluohesje voor op de fiets geel BTWIN',
+    brand: 'BTWIN',
+    url:
+        'https://www.decathlon.nl/p/fluohesje-voor-op-de-fiets-geel/_/R-p-341834',
+    priceEur: 7.99,
+    fit: 'Certified hi-vis vest with reflective strips, fits over a jacket',
+  ),
+  Product(
+    id: 'run_led_armband_1',
+    category: 'run_led_armband',
+    name: 'Hardloop armband met LED verlichting',
+    url:
+        'https://www.decathlon.nl/p/hardloop-armband-met-led-verlichting/X8812985/c5m8812985',
+    priceEur: 4.99,
+    fit: 'Light armband with red LEDs so traffic sees you',
+  ),
+  Product(
+    id: 'bike_lights_1',
+    category: 'bike_lights',
+    name: 'Set fietsverlichting ST 920 USB ELOPS',
+    brand: 'ELOPS',
+    url:
+        'https://www.decathlon.nl/p/set-fietsverlichting-st-920-usb/_/R-p-313171',
+    priceEur: 39.99,
+    fit: 'Front (300 lumen) and rear light set, USB rechargeable',
+  ),
+  Product(
+    id: 'bike_lights_2',
+    category: 'bike_lights',
+    name: 'Fietsverlichting set op LED ST 520 voor/achter zwart USB',
+    brand: 'ELOPS',
+    url:
+        'https://www.decathlon.nl/p/fietsverlichting-set-op-led-st-520-voor-achter-zwart-usb/_/R-p-11186',
+    priceEur: 18.99,
+    fit: 'Budget front and rear LED set, USB rechargeable',
+  ),
+  Product(
+    id: 'swim_buoy_1',
+    category: 'swim_buoy',
+    name: 'Boei voor openwaterzwemmen OWS 100 NABAIJI',
+    brand: 'NABAIJI',
+    url:
+        'https://www.decathlon.nl/p/boei-voor-openwaterzwemmen-ows-100/_/R-p-310505',
+    priceEur: 14.99,
+    fit: 'Bright tow float so boats and people on shore can see you',
+  ),
+  Product(
+    id: 'swim_suit_1',
+    category: 'swim_suit',
+    name: 'Sportbadpak Kamyla 500 dames geel',
+    brand: 'NABAIJI',
+    url:
+        'https://www.decathlon.nl/p/sportbadpak-kamyla-500-dames-geel/347572/c382c132m8851660',
+    priceEur: 17.99,
+    fit: 'Chlorine-resistant training swimsuit that stays in place',
+  ),
+  Product(
+    id: 'swim_jammer_1',
+    category: 'swim_jammer',
+    name: 'Zwemjammer voor heren 500 Fiti NABAIJI',
+    brand: 'NABAIJI',
+    url:
+        'https://www.decathlon.nl/p/zwemjammer-voor-heren-500-fiti/_/R-p-306807',
+    priceEur: 27.99,
+    fit: 'Chlorine-resistant jammer for regular training (runs small)',
+  ),
+  Product(
+    id: 'swim_slippers_1',
+    category: 'swim_slippers',
+    name: 'Badslippers dames Slap 100 basic donkerblauw',
+    brand: 'NABAIJI',
+    url:
+        'https://www.decathlon.nl/p/badslippers-dames-slap-100-basic-donkerblauw/_/R-p-300976',
+    priceEur: 3.99,
+    fit: 'Simple grippy pool slippers',
+  ),
+  Product(
+    id: 'swim_slippers_2',
+    category: 'swim_slippers',
+    name: 'Badslippers voor heren Slap 900 Soft zwart/geel',
+    url:
+        'https://www.decathlon.nl/p/badslippers-voor-heren-slap-900-soft-zwart-geel/_/R-p-X8575197',
+    priceEur: 19.99,
+    fit: 'Soft pool slippers with soles that drain water',
+  ),
+  Product(
+    id: 'run_shoes_1',
+    category: 'run_shoes',
+    name: 'Hardloopschoenen heren Run Active',
+    brand: 'KALENJI',
+    url:
+        'https://www.decathlon.nl/p/hardloopschoenen-heren-run-active/_/R-p-145826',
+    priceEur: 29.99,
+    rating: 4.4,
+    fit: 'Light cushioned shoes for up to about 10 km a week',
+  ),
+  Product(
+    id: 'run_shoes_2',
+    category: 'run_shoes',
+    name: 'Hardloopschoenen voor dames KS900.2 KIPRUN',
+    brand: 'KIPRUN',
+    url:
+        'https://www.decathlon.nl/p/hardloopschoenen-voor-dames-ks900-2/_/R-p-341717',
+    priceEur: 139.99,
+    fit: 'Well-cushioned shoes for regular and long runs',
+  ),
+  Product(
+    id: 'bike_shoes_1',
+    category: 'bike_shoes',
+    name: 'Fietsschoenen 500 VAN RYSEL',
+    brand: 'VAN RYSEL',
+    url: 'https://www.decathlon.nl/p/fietsschoenen-500/_/R-p-143883',
+    fit: 'Road cycling shoes for clip-in pedals',
+  ),
+  Product(
+    id: 'bike_shoes_2',
+    category: 'bike_shoes',
+    name: 'Fietsschoenen voor wielrennen Van Rysel Roadr 520',
+    brand: 'VAN RYSEL',
+    url:
+        'https://www.decathlon.nl/p/fietsschoenen-voor-wielrennen-van-rysel-roadr-520/_/R-p-308014',
+    fit: 'Road cycling shoes for regular rides',
   ),
 ];

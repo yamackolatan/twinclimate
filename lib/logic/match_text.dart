@@ -23,9 +23,9 @@ String windowText(PlaceResult r) {
 }
 
 /// "Sat 24 Oct · best start 08:00" — or, for typical weather over a
-/// period, "On a typical day · best start 08:00".
+/// period, "Typical day around 1 Dec · best start 08:00".
 String bestStartText(PlaceResult r, {bool typicalDay = false}) =>
-    '${typicalDay ? 'On a typical day' : formatDay(r.best.start)} · '
+    '${typicalDay ? 'Typical day around ${formatDayMonth(r.best.start)}' : formatDay(r.best.start)} · '
     'best start ${formatTime(r.best.start)}';
 
 /// Forecast vs race-typical numbers, e.g. "19°C vs 18°C race typical".
@@ -39,6 +39,37 @@ List<String> comparisonParts(SessionConditions c, ConditionStats target) => [
 ];
 
 String scoreText(double score) => '${score.round()}%';
+
+/// The score bars in words, for phones where tooltips need a long press:
+/// "Best start 08:00 scores 82% · every start 07:00–09:00 scores 75% or
+/// more".
+String scoreBarsText(PlaceResult r) {
+  final best =
+      'Best start ${formatTime(r.best.start)} scores ${scoreText(r.best.score)}';
+  if (r.windowFirstStart == r.windowLastStart) {
+    return '$best · other start times score lower';
+  }
+  final inWindow = [
+    for (final o in r.dayScores)
+      if (!o.start.isBefore(r.windowFirstStart) &&
+          !o.start.isAfter(r.windowLastStart))
+        o.score,
+  ];
+  final lowest = inWindow.reduce((a, b) => a < b ? a : b);
+  return '$best · every start ${formatTime(r.windowFirstStart)}–'
+      '${formatTime(r.windowLastStart)} scores ${scoreText(lowest)} or more';
+}
+
+/// Travel range for "Widen range": double it, up to the 300 km maximum;
+/// null when it's already at the maximum.
+double? widerRange(double rangeKm) {
+  if (rangeKm >= maxRangeKm) return null;
+  final doubled = (rangeKm * 2 / 10).round() * 10.0;
+  return doubled > maxRangeKm ? maxRangeKm : doubled;
+}
+
+/// Longest travel range the form offers.
+const double maxRangeKm = 300;
 
 String _capitalise(String s) =>
     s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);

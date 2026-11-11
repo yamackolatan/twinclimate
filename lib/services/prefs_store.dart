@@ -361,6 +361,13 @@ class PrefsStore {
     FeedbackEntry.encodeList(feedback.where((e) => e.id != id).toList()),
   );
 
+  /// Puts a deleted answer back where it was ("Undo").
+  Future<void> restoreFeedback(FeedbackEntry entry, int index) {
+    final all = [...feedback.where((e) => e.id != entry.id)];
+    all.insert(index.clamp(0, all.length), entry);
+    return _prefs.setString(_kFeedback, FeedbackEntry.encodeList(all));
+  }
+
   /// Settings sliders: sport → body part → −2 … +2.
   Map<Sport, Map<BodyPart, int>> get comfortManual {
     try {
@@ -412,9 +419,16 @@ class PrefsStore {
     BodyPart part,
     TempZone zone,
     DateTime now,
-  ) {
+  ) => setForgotten(ComfortProfile.key(sport, part, zone), now);
+
+  /// Sets (or with null, clears) one "Forget" choice; used for "Undo".
+  Future<void> setForgotten(String key, DateTime? at) {
     final all = {...comfortForgotten};
-    all[ComfortProfile.key(sport, part, zone)] = now;
+    if (at == null) {
+      all.remove(key);
+    } else {
+      all[key] = at;
+    }
     return _prefs.setString(
       _kForgotten,
       jsonEncode({

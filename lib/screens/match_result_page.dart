@@ -102,20 +102,18 @@ class _MatchResultPageState extends State<MatchResultPage> {
             .compute(race);
     final updated = race.withFingerprint(fingerprint);
     await widget.store.saveRace(updated);
-    _request = MatchRequest(
-      race: updated,
-      sport: _request.sport,
-      home: _request.home,
-      distanceKm: _request.distanceKm,
-      rangeKm: _request.rangeKm,
-      mode: _request.mode,
-      date: _request.date,
-      periodDays: _request.periodDays,
-      periodStart: _request.periodStart,
-      weights: _request.weights,
-      window: _request.window,
-      homeUtcOffsetSeconds: _request.homeUtcOffsetSeconds,
+    _request = _request.copyWith(race: updated);
+  }
+
+  /// "Widen range": search again with a longer travel range.
+  void _widen(double rangeKm) {
+    setState(() => _request = _request.copyWith(rangeKm: rangeKm));
+    widget.store.rememberMatch(
+      rangeKm: rangeKm,
+      periodMode: _request.mode == MatchMode.period,
+      periodDays: widget.store.matchPeriodDays,
     );
+    _run();
   }
 
   /// Fills in place names one by one; results show "38 km north" until then.
@@ -129,14 +127,7 @@ class _MatchResultPageState extends State<MatchResultPage> {
       if (name == null) continue;
       setState(() {
         final current = _result!.results[i];
-        final renamed = PlaceResult(
-          spot: current.spot.copyWith(name: name),
-          best: current.best,
-          windowFirstStart: current.windowFirstStart,
-          windowLastStart: current.windowLastStart,
-          durationMinutes: current.durationMinutes,
-          dayScores: current.dayScores,
-        );
+        final renamed = current.withSpot(current.spot.copyWith(name: name));
         _result = MatchResult(
           target: _result!.target,
           results: [..._result!.results]..[i] = renamed,
@@ -292,6 +283,16 @@ class _MatchResultPageState extends State<MatchResultPage> {
   }
 
   Widget _typicalBanner(TypicalBasis t) {
+    final until = t.forecastUntil;
+    if (until != null) {
+      return _TypicalNote(
+        'Up to ${formatDay(until)} we use the real forecast. Your later days '
+        'are more than 16 days away, so for those, places are ranked by their '
+        'typical weather for ${formatDayMonth(t.date)} ±5 days over '
+        '${t.firstYear}–${t.lastYear} — not a forecast. Results from those '
+        'days are marked "Typical weather".',
+      );
+    }
     final when = t.forPeriod
         ? 'the middle of your period (${formatDayMonth(t.date)}) ±5 days'
         : '${formatDayMonth(t.date)} ±5 days';
@@ -344,6 +345,15 @@ class _MatchResultPageState extends State<MatchResultPage> {
                       ),
                     ),
                   ),
+                if (widerRange(_request.rangeKm) case final wider?)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => _widen(wider),
+                      icon: const Icon(Icons.open_in_full, size: 18),
+                      label: Text('Widen range to ${wider.round()} km'),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -356,6 +366,7 @@ class _MatchResultPageState extends State<MatchResultPage> {
           onSession: () => _openSession(result.results[i]),
           onMap: () => _openMap(result.results[i].spot),
           typicalPeriod: result.typical?.forPeriod ?? false,
+          mixed: result.typical?.forecastUntil != null,
         ),
       const SizedBox(height: 4),
       _raceKitSection(),
@@ -376,7 +387,9 @@ class _MatchResultPageState extends State<MatchResultPage> {
         '100% means race-typical conditions; 70% or '
         'more is within the normal range of race days. The bars show the '
         'score for each start time; the highlighted ones are the good '
-        'window.',
+        'window. Rain is the chance of rain during your session: from the '
+        'forecast, or — for race day and typical weather — how often past '
+        'days had at least 1 mm of rain in those hours.',
         style: muted,
       ),
     ];
@@ -478,7 +491,11 @@ class _ResultCard extends StatelessWidget {
     required this.onSession,
     required this.onMap,
     this.typicalPeriod = false,
+    this.mixed = false,
   });
+
+  /// Some results are from the forecast, others from typical weather.
+  final bool mixed;
 
   final int rank;
   final PlaceResult result;
@@ -598,9 +615,26 @@ class _ResultCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              bestStartText(result, typicalDay: typicalPeriod),
+              bestStartText(
+                result,
+                typicalDay: typicalPeriod && result.typical,
+              ),
               style: theme.textTheme.bodyMedium,
             ),
+            if (mixed && result.typical)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Row(
+                  children: [
+                    Icon(Icons.history, size: 16, color: scheme.tertiary),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Typical weather, not a forecast',
+                      style: muted?.copyWith(color: scheme.tertiary),
+                    ),
+                  ],
+                ),
+              ),
             Text(
               windowText(result),
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -609,6 +643,8 @@ class _ResultCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _ScoreBars(result: result),
+            const SizedBox(height: 4),
+            Text(scoreBarsText(result), style: muted),
             const SizedBox(height: 12),
             Text('Here vs race typical', style: muted),
             const SizedBox(height: 4),

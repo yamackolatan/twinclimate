@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:twinclimate/theme.dart';
 import 'package:twinclimate/logic/feedback_logic.dart';
 import 'package:twinclimate/logic/place_time.dart';
 import 'package:twinclimate/models/comfort.dart';
@@ -124,6 +125,7 @@ void main() {
     final weather = FakeWeatherService()..utcOffsetSeconds = offset;
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light(),
         home: QuickSessionPage(store: store, weather: weather),
       ),
     );

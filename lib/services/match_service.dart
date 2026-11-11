@@ -61,15 +61,46 @@ class MatchService {
       );
     }
 
-    // Past the 16-day forecast, rank places by typical weather instead.
-    final useTypical = requested.any((d) => d.isAfter(lastDayOfForecast));
-    final List<DateTime> days;
-    final List<(Spot, List<HourWeather>)> land;
+    // Days within the 16-day forecast use the forecast; later days use
+    // typical weather from the last 10 years (owner request, Oct 2026).
+    final forecastDays = [
+      for (final d in requested)
+        if (!d.isAfter(lastDayOfForecast)) d,
+    ];
+    final laterDays = [
+      for (final d in requested)
+        if (d.isAfter(lastDayOfForecast)) d,
+    ];
+
+    List<SpotForecast>? forecasts;
+    if (forecastDays.isNotEmpty) {
+      // Late starts can run past midnight; fetch the next day when possible.
+      final nextDay = forecastDays.last.add(const Duration(days: 1));
+      final lastDay = nextDay.isAfter(lastDayOfForecast)
+          ? forecastDays.last
+          : nextDay;
+      forecasts = <SpotForecast>[];
+      for (var i = 0; i < spots.length; i += _batchSize) {
+        final batch = spots.skip(i).take(_batchSize).toList();
+        forecasts.addAll(
+          await _retry(
+            () => weather.fetchHourlyMany(
+              points: [for (final s in batch) (s.latitude, s.longitude)],
+              firstDay: forecastDays.first,
+              lastDay: lastDay,
+            ),
+          ),
+        );
+      }
+    }
+
+    List<TypicalSpot>? typicalSpots;
     TypicalBasis? basis;
-    if (useTypical) {
-      final date = requested[requested.length ~/ 2];
-      days = [date];
-      final (typicalSpots, years) =
+    if (laterDays.isNotEmpty) {
+      // Typical weather is taken around one date: the middle of the days
+      // beyond the forecast.
+      final date = laterDays[laterDays.length ~/ 2];
+      final (spotsTypical, years) =
           await TypicalWeatherService(
             weather,
             clock: _clock,
@@ -82,74 +113,69 @@ class MatchService {
               'at ${spots.length} spots ($done of $total years)…',
             ),
           );
+      typicalSpots = spotsTypical;
       basis = TypicalBasis(
         date: date,
         firstYear: years.first,
         lastYear: years.last,
         forPeriod: request.mode == MatchMode.period,
+        forecastUntil: forecastDays.isEmpty ? null : forecastDays.last,
       );
-      land = [
-        for (var i = 0; i < spots.length; i++)
-          if (spots[i].isHome || typicalSpots[i].elevationM > 0)
-            (
-              spots[i].copyWith(elevationM: typicalSpots[i].elevationM),
-              typicalSpots[i].hours,
-            ),
-      ];
-    } else {
-      days = requested;
-      // Late starts can run past midnight; fetch the next day when possible.
-      final nextDay = days.last.add(const Duration(days: 1));
-      final lastDay = nextDay.isAfter(lastDayOfForecast) ? days.last : nextDay;
-      final forecasts = <SpotForecast>[];
-      for (var i = 0; i < spots.length; i += _batchSize) {
-        final batch = spots.skip(i).take(_batchSize).toList();
-        forecasts.addAll(
-          await _retry(
-            () => weather.fetchHourlyMany(
-              points: [for (final s in batch) (s.latitude, s.longitude)],
-              firstDay: days.first,
-              lastDay: lastDay,
-            ),
-          ),
-        );
-      }
-      // Spots in the sea (height 0) are left out; the start point stays.
-      land = [
-        for (var i = 0; i < spots.length; i++)
-          if (spots[i].isHome || forecasts[i].elevationM > 0)
-            (
-              spots[i].copyWith(elevationM: forecasts[i].elevationM),
-              forecasts[i].hours,
-            ),
-      ];
     }
 
     onProgress?.call('Comparing every start time with race day…');
     final perSpot = <PlaceResult>[];
-    for (final (spot, hours) in land) {
-      final byHour = {
-        for (final h in hours)
-          DateTime(h.time.year, h.time.month, h.time.day, h.time.hour): h,
-      };
-      final result = bestForSpot(
+    var landCount = 0;
+    for (var i = 0; i < spots.length; i++) {
+      final elevation = forecasts?[i].elevationM ?? typicalSpots![i].elevationM;
+      // Spots in the sea (height 0) are left out; the start point stays.
+      if (!spots[i].isHome && elevation <= 0) continue;
+      landCount++;
+      final spot = spots[i].copyWith(elevationM: elevation);
+      PlaceResult? best(
+        List<HourWeather> hours,
+        List<DateTime> days, {
+        TypicalSpot? typical,
+      }) => bestForSpot(
         spot: spot,
-        byHour: byHour,
+        byHour: {
+          for (final h in hours)
+            DateTime(h.time.year, h.time.month, h.time.day, h.time.hour): h,
+        },
         days: days,
         durationMinutes: request.durationMinutes,
         target: target.stats,
         weights: request.weights,
         window: request.window,
-        notBefore: useTypical ? null : now.add(const Duration(minutes: 15)),
+        notBefore: typical != null
+            ? null
+            : now.add(const Duration(minutes: 15)),
+        rainChance: typical?.wetShare,
+        typical: typical != null,
       );
-      if (result != null) perSpot.add(result);
+      final fromForecast = forecasts == null
+          ? null
+          : best(forecasts[i].hours, forecastDays);
+      final fromTypical = typicalSpots == null
+          ? null
+          : best(typicalSpots[i].hours, [
+              basis!.date,
+            ], typical: typicalSpots[i]);
+      // Each place at its best day, whichever kind of weather it's from.
+      final pick = fromTypical == null
+          ? fromForecast
+          : fromForecast == null ||
+                fromTypical.best.score > fromForecast.best.score
+          ? fromTypical
+          : fromForecast;
+      if (pick != null) perSpot.add(pick);
     }
 
     final ranked = rankResults(perSpot);
     return MatchResult(
       target: target,
       results: ranked,
-      spotsChecked: land.length,
+      spotsChecked: landCount,
       typical: basis,
       notes: ranked.isEmpty
           ? [noTimeFoundNote(request.window, request.durationMinutes)]

@@ -26,6 +26,47 @@ class _ComfortProfilePageState extends State<ComfortProfilePage> {
     2: 'Runs warm',
   };
 
+  /// "Forget" acts at once but can be undone for a few seconds.
+  Future<void> _forget(
+    Sport sport,
+    BodyPart part,
+    TempZone zone,
+    String label,
+  ) async {
+    final key = ComfortProfile.key(sport, part, zone);
+    final previous = widget.store.comfortForgotten[key];
+    await widget.store.forgetLearned(sport, part, zone, DateTime.now());
+    if (!mounted) return;
+    setState(() {});
+    _offerUndo('Forgotten: $label', () async {
+      await widget.store.setForgotten(key, previous);
+      if (mounted) setState(() {});
+    });
+  }
+
+  /// Deleting an answer can be undone for a few seconds.
+  Future<void> _delete(FeedbackEntry entry) async {
+    final index = widget.store.feedback.indexWhere((e) => e.id == entry.id);
+    await widget.store.deleteFeedback(entry.id);
+    if (!mounted) return;
+    setState(() {});
+    _offerUndo('Answer deleted', () async {
+      await widget.store.restoreFeedback(entry, index);
+      if (mounted) setState(() {});
+    });
+  }
+
+  void _offerUndo(String message, Future<void> Function() undo) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          action: SnackBarAction(label: 'Undo', onPressed: undo),
+        ),
+      );
+  }
+
   Future<void> _resetAll() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -142,15 +183,12 @@ class _ComfortProfilePageState extends State<ComfortProfilePage> {
                                 '${l.steps > 0 ? 'lighter' : 'warmer'}',
                     ),
                     trailing: TextButton(
-                      onPressed: () async {
-                        await widget.store.forgetLearned(
-                          sport,
-                          part,
-                          zone,
-                          DateTime.now(),
-                        );
-                        if (mounted) setState(() {});
-                      },
+                      onPressed: () => _forget(
+                        sport,
+                        part,
+                        zone,
+                        '${part.label} · ${zone.phrase}',
+                      ),
                       child: const Text('Forget'),
                     ),
                   ),
@@ -173,10 +211,7 @@ class _ComfortProfilePageState extends State<ComfortProfilePage> {
                     trailing: IconButton(
                       tooltip: 'Delete this answer',
                       icon: const Icon(Icons.delete_outline),
-                      onPressed: () async {
-                        await widget.store.deleteFeedback(e.id);
-                        if (mounted) setState(() {});
-                      },
+                      onPressed: () => _delete(e),
                     ),
                   ),
                 const SizedBox(height: 24),

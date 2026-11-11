@@ -583,4 +583,83 @@ void main() {
       expect(MatchTarget.forRace(race, Sport.run), isNull);
     });
   });
+
+  test('typical weather can supply its own rain chance', () {
+    final day = DateTime(2026, 11, 20);
+    final byHour = {
+      for (var h = 6; h < 12; h++)
+        DateTime(2026, 11, 20, h): HourWeather(
+          time: DateTime(2026, 11, 20, h),
+          temperatureC: 10,
+          apparentC: 9,
+          humidityPercent: 80,
+          precipProbabilityPercent: 40,
+          precipitationMm: 0,
+          windKmh: 10,
+          gustKmh: 20,
+          weatherCode: 2,
+          isDay: true,
+        ),
+    };
+    final start = day.add(const Duration(hours: 8));
+    // The forecast's own figure: highest hourly chance.
+    expect(sessionConditions(byHour, start, 90)!.rainLikelihood, 0.4);
+    List<DateTime>? asked;
+    final c = sessionConditions(
+      byHour,
+      start,
+      90,
+      rainChance: (slots) {
+        asked = slots;
+        return 0.25;
+      },
+    );
+    expect(c!.rainLikelihood, 0.25);
+    expect(asked, [start, start.add(const Duration(hours: 1))]);
+  });
+
+  group('score bars in words and wider range', () {
+    MatchOption at(int hour, double score) => MatchOption(
+      start: DateTime(2026, 10, 24, hour),
+      conditions: const SessionConditions(
+        temperature: 18,
+        humidity: 75,
+        wind: 15,
+        rainLikelihood: 0.3,
+      ),
+      score: score,
+    );
+    PlaceResult result(int first, int last) => PlaceResult(
+      spot: const Spot(
+        latitude: 0,
+        longitude: 0,
+        distanceKm: 0,
+        bearingDegrees: 0,
+      ),
+      best: at(8, 82.4),
+      windowFirstStart: DateTime(2026, 10, 24, first),
+      windowLastStart: DateTime(2026, 10, 24, last),
+      durationMinutes: 60,
+      dayScores: [at(6, 50), at(7, 75), at(8, 82.4), at(9, 77), at(10, 40)],
+    );
+
+    test('best start and the good window, as text', () {
+      expect(
+        scoreBarsText(result(7, 9)),
+        'Best start 08:00 scores 82% · every start 07:00–09:00 scores 75% '
+        'or more',
+      );
+      expect(
+        scoreBarsText(result(8, 8)),
+        'Best start 08:00 scores 82% · other start times score lower',
+      );
+    });
+
+    test('widen range doubles up to 300 km', () {
+      expect(widerRange(50), 100);
+      expect(widerRange(150), 300);
+      expect(widerRange(200), 300);
+      expect(widerRange(300), isNull);
+    });
+  });
 }

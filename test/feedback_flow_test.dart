@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:twinclimate/theme.dart';
 import 'package:twinclimate/models/comfort.dart';
 import 'package:twinclimate/models/gear.dart';
 import 'package:twinclimate/models/place.dart';
 import 'package:twinclimate/models/session.dart';
 import 'package:twinclimate/models/weather.dart';
+import 'package:twinclimate/screens/comfort_profile_page.dart';
 import 'package:twinclimate/screens/quick_session_page.dart';
 import 'package:twinclimate/screens/session_result_page.dart';
 import 'package:twinclimate/services/prefs_store.dart';
@@ -75,6 +77,7 @@ Future<void> pumpHome(WidgetTester tester, PrefsStore store) async {
   addTearDown(tester.view.resetDevicePixelRatio);
   await tester.pumpWidget(
     MaterialApp(
+      theme: AppTheme.light(),
       home: QuickSessionPage(store: store, weather: WarmWeather()),
     ),
   );
@@ -342,6 +345,7 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light(),
         home: SessionResultPage(
           plan: plan,
           weather: FakeWeatherService(),
@@ -363,5 +367,89 @@ void main() {
       store.sessionRecords.single.packedSuggestionFor(BodyPart.torso),
       isTrue,
     );
+  });
+
+  testWidgets('Back steps through the card and keeps the answers', (
+    tester,
+  ) async {
+    final store = await freshStore();
+    await store.recordSession(finishedRun('back'));
+    await pumpHome(tester, store);
+
+    await tester.tap(find.text('Too warm'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Torso'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Did you wear that?'), findsOneWidget);
+
+    // Back to "where", with Torso still picked.
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Where did you feel too warm?'), findsOneWidget);
+    final torso = tester.widget<FilterChip>(
+      find.widgetWithText(FilterChip, 'Torso'),
+    );
+    expect(torso.selected, isTrue);
+
+    // Back to the first question, "Too warm" still picked.
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('How did your run at Vondelpark feel?'), findsOneWidget);
+    final warm = tester.widget<FilterChip>(
+      find.widgetWithText(FilterChip, 'Too warm'),
+    );
+    expect(warm.selected, isTrue);
+    expect(store.feedback, isEmpty); // nothing saved by going back
+  });
+
+  testWidgets('Forget and Delete in the comfort profile can be undone', (
+    tester,
+  ) async {
+    final store = await freshStore();
+    for (var i = 0; i < 2; i++) {
+      await store.addFeedback(
+        FeedbackEntry(
+          id: 'warm$i',
+          sport: Sport.run,
+          date: DateTime(2026, 10, 1 + i),
+          feelsC: 17,
+          measured: true,
+          feeling: Feeling.tooWarm,
+          part: BodyPart.torso,
+          worn: Worn.asSuggested,
+        ),
+      );
+    }
+    tester.view.physicalSize = const Size(1000, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: ComfortProfilePage(store: store),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Forget').first);
+    await tester.pumpAndSettle();
+    expect(store.comfortForgotten, isNotEmpty);
+    expect(find.textContaining('Forgotten: Torso'), findsOneWidget);
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+    expect(store.comfortForgotten, isEmpty);
+
+    await tester.tap(find.byTooltip('Delete this answer').first);
+    await tester.pumpAndSettle();
+    expect(store.feedback, hasLength(1));
+    expect(find.text('Answer deleted'), findsOneWidget);
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+    expect(store.feedback.map((e) => e.id), ['warm0', 'warm1']);
   });
 }

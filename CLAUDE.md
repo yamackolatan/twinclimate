@@ -111,7 +111,9 @@ cyclists, triathletes, amateur sportspeople) answering two questions:
 - **Flutter** (Dart SDK ^3.12.2; Flutter **3.44.2 stable**, the version the
   website build and Codemagic use). One codebase: **web** (the live site)
   and **iOS** (App Store build). Android is not set up yet. Material 3,
-  light and dark mode, shared theme in `lib/theme.dart`.
+  light and dark mode, shared theme in `lib/theme.dart`. Widget tests use
+  `AppTheme.light()` too (its full-width buttons break inside a `Row`;
+  tests without the theme do not notice).
 - **Packages** (`pubspec.yaml`, keep this list small): `http`,
   `shared_preferences`, `url_launcher`, `web` (browser location + share),
   `geolocator` and `share_plus` (location + share in the iPhone app),
@@ -124,6 +126,8 @@ cyclists, triathletes, amateur sportspeople) answering two questions:
     shortwave_radiation, wind_direction_10m, uv_index; plus
     `daily=sunrise,sunset`; `timezone=auto` (times are local to the place).
   - Geocoding API for place search.
+  - A tiny forecast request (`current=is_day`) returns the place's
+    `utc_offset_seconds` (`WeatherService.fetchUtcOffsetSeconds`).
   - Archive API (ERA5 history) for race fingerprints and "typical weather".
   - Not used yet: Marine API (water temperature, V3), Elevation API (V2).
   - Free-tier limits are per internet address: per minute, per hour
@@ -157,6 +161,7 @@ lib/
                        product
   logic/               pure logic, no Flutter UI, unit-tested:
                        gear_engine (kit rules), best_time, weather_text,
+                       place_time (clock at the place, time zones),
                        share_text, fingerprint_builder/_text,
                        typical_weather, match_engine/_text, feedback_logic,
                        shop_logic
@@ -175,7 +180,7 @@ lib/
                        feedback_card, races_section, weights_panel,
                        product_sheet
   data/decathlon_catalogue.dart   demo product snapshot (109 products)
-test/                  190 tests: unit tests for all logic + widget "flow"
+test/                  208 tests: unit tests for all logic + widget "flow"
                        tests that walk the screens with fake weather
 tool/                  scripts run by hand against REAL weather:
                        check_real_weather, check_real_matching,
@@ -333,8 +338,13 @@ with reasons. Works in web preview.
   as race fingerprints), clearly labelled "Typical weather, not a forecast"
   with the date the real forecast becomes available.
 - Quick Session dates go up to a year ahead. Race Matching specific dates
-  and "Choose dates" periods too (periods capped at 31 days; beyond the
-  forecast a period is ranked on its middle day ±5 days). Race Matching
+  and "Choose dates" periods too (periods capped at 31 days). In a period,
+  days within the forecast use the real forecast; only the days beyond it
+  use typical weather, taken around the middle of those later days ±5
+  days (owner request, Nov 2026). Each place shows its best day from
+  either source; typical results are marked "Typical weather, not a
+  forecast" and the banner says up to which day the forecast is used.
+  Race Matching
   fetches history for all 43 spots in one request per year, sequentially
   (per-minute limit). Each 43-spot request is ~650 KB / 1–2 s, but counts
   as ~43 calls against Open-Meteo's free hourly limit (~5,000), so results
@@ -626,9 +636,30 @@ Replaced by the two shopping features (F5a, F5b) below.
 - Race form asks before discarding unsaved changes. Loading screens say
   what they're doing; error messages never show raw exception text; links
   open in the system browser (`LaunchMode.externalApplication`).
-- Known limitation (not fixed): "now" comes from the phone's clock, so for
-  places in another time zone "Now", "start time has passed" and "1 h
-  earlier" can be off by the time difference.
+- **Time zones (fixed Nov 2026, owner request):** "Now", "Today", the
+  default date, "start time has passed", "1 h earlier", the better-time
+  hint, Race Matching's "too late today" and the feedback card's "has it
+  finished?" all use the clock at the place (`clockAt` in
+  `lib/logic/place_time.dart`). The home screen learns each place's UTC
+  offset once per visit (one tiny request), saves it with the place and
+  the session record, and says "Times are local time in Kalmar (1 h ahead
+  of you)" when it differs from the phone. Unknown offset = phone's clock.
+  Match spots are assumed to share the starting point's time zone.
+
+### Polish round (owner-approved, Nov 2026 — build to these)
+- Feedback card: Back on the "where" and "did you wear that?" steps; going
+  back keeps the answers already picked.
+- Comfort profile: "Forget" and deleting an answer show an Undo bar.
+- Weak match ("no close match within X km"): a "Widen range to N km"
+  button doubles the travel range (max 300 km), searches again and
+  remembers it.
+- Under each match card's score bars, the scores in words ("Best start
+  08:00 scores 82% · every start 07:00–09:00 scores 75% or more").
+- **One rain measure on match cards:** race day and typical weather both
+  use "share of past days with ≥ 1 mm of rain in those hours" (the race
+  definition, `typicalWetShare`); the forecast uses its own rain chance
+  (highest hourly chance in the session), because a forecast has no past
+  days to count. The results footer explains this.
 
 ### Later phases (do NOT start without the owner asking)
 - V2: exact route suggestions (OSM/Overpass + loop generation, elevation,

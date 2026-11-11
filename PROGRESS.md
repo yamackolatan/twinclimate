@@ -10,8 +10,9 @@ do next.
 - **Live website:** https://yamackolatan.github.io/twinclimate/ (Flutter
   web, published by GitHub Pages from branch `claude/relaxed-brown-be0mcz`).
 - **Code state:** everything described below is committed and published.
-  Latest app commit: "Every kit suggestion now has a Decathlon link".
-  `flutter analyze` clean, **190 tests pass**, web build succeeds.
+  Latest app commit: "Long race-match periods use the real forecast;
+  small polish". `flutter analyze` clean, **208 tests pass**, web build
+  succeeds.
 - **Branches:** `claude/relaxed-brown-be0mcz` = the published one;
   `claude/confident-goldberg-0g8kdx` = last session's working branch (same
   content). No `main` branch, no pull requests.
@@ -64,16 +65,27 @@ do next.
    screenshots in `docs/app-store/screenshots/`.
 10. **Growth research** in `reports/` and `research_notes/` (how to attract
     and keep users; first milestone suggested there: 300–500 weekly users).
+11. **Time zones, honest long periods, polish (11 Nov 2026).** All "now"
+    decisions use the clock at the training place (home screen notes the
+    difference, e.g. "1 h ahead of you"); a Race Matching period that
+    runs past the 16-day forecast uses the real forecast for the days it
+    covers and typical weather only for the later days; Back buttons in
+    the feedback card; Undo for comfort "Forget"/delete; "Widen range"
+    on weak matches; scores in words under the score bars; one rain
+    measure for race day and typical weather (≥ 1 mm in those hours).
 
 ## 3. What is working, and how it was checked
 
-- **Automated:** 190 tests covering the kit rules, session window, race
+- **Automated:** 208 tests covering the kit rules, session window, race
   climate maths, matching, typical weather, comfort learning, shop rules,
   weather parsing and widget "flow" tests through every main screen. The
   App Store variant is tested with `--dart-define=STORE_BUILD=true`.
 - **Seen in a browser (cloud session, SAMPLE weather):** home (light,
   dark, desktop), result screen, place search, race form, race detail,
-  match form and results, kit list with links.
+  match form and results, kit list with links. On 11 Nov 2026 also: the
+  time-difference note, feedback card Back buttons, Comfort profile Undo,
+  "Widen range" (50 → 100 km re-search), score text and rain footnote.
+  The mixed forecast/typical period was checked by tests only.
 - **On the live site with real weather:** used by the owner. Earlier
   sessions also ran the `tool/check_*` scripts against real Open-Meteo
   data for race climates, matching and typical weather.
@@ -92,24 +104,29 @@ Not verified at all
   asked to tap a few to confirm.
 - **iPhone layout fixes** (bottom safe area) — only reasoned from code.
 
+- **Time zones with real data.** Checked with sample offsets only; a real
+  check: pick a place abroad (e.g. Kona) and see the "h behind you" note
+  and "Now" in its local time.
+
 Known limitations (not fixed)
-- **Time zones.** "Now", "this start time has passed", "1 h earlier" and
-  the feedback card use the phone's clock; for a place in another time
-  zone they are off by the time difference. Fix idea: keep Open-Meteo's
-  `utc_offset_seconds` per place and compute "now at the place".
+- **Time zones, small gaps:** Race Matching assumes every spot shares the
+  starting point's time zone (fine within 300 km almost everywhere). If
+  the time-zone request fails, the phone's clock is used, as before.
 - **Close-but-not-exact products:** "Headlamp or chest light" links to a
   clip-on hip light; "Bright tow float with a light" links to a float
   without a light (closest real product pages found).
-- **Race Matching, periods beyond the forecast:** a period that reaches
-  past the 16-day forecast is ranked entirely on typical weather for its
-  middle day, even for the days that do have a forecast. The on-screen
-  text ("Up to X we use the forecast…") promises more than that.
-- **Rain comparison mixes measures:** forecast = highest hourly rain
-  probability; race = share of past race days with ≥ 1 mm; typical weather
-  = share of hours with ≥ 0.1 mm. Shown side by side on match cards.
+- **Mixed periods compare two kinds of weather:** a day from the forecast
+  and a day of typical (averaged) weather are ranked against each other;
+  averages are smoother, so typical days can look slightly more "steady".
+  Each such result is labelled.
+- **Rain on match cards:** race day and typical weather now share one
+  measure (share of past days with ≥ 1 mm in those hours). A forecast
+  can't count past days, so forecast results show the forecast's own
+  rain chance; the footer says so.
 - **Feedback card:** more than 2 taps for "too cold/warm" (by owner's
-  multi-answer design) and no Back button between its steps.
-- **Comfort profile:** "Forget" and delete act immediately, no undo.
+  multi-answer design).
+- **Undo bar** from the Comfort profile stays visible for a few seconds
+  after going back to the home screen (Undo still works there).
 - **Partner demo counters:** race-day kit picks are never counted as
   "shown"; opening a sheet counts once per product type.
 - **Swim:** no water temperature (planned V3); open-water advice is based
@@ -205,23 +222,15 @@ Known limitations (not fixed)
    it changed before the first upload (it cannot change afterwards).
 3. **Submit to App Review** using the texts in `docs/APP_STORE.md`; handle
    any rejection feedback the owner pastes in.
-4. **Fix the time-zone limitation** (4, "Time zones") — matters for race
-   places abroad such as Ironman Kalmar or races outside Europe.
-5. **Make the match period honest beyond the forecast** (4, third bullet):
-   either use real forecasts for the days that have them or change the
-   on-screen sentence.
-6. **Small polish from the last review, not yet done:** Back button in the
-   feedback card steps; undo for comfort "Forget"/delete; a "Widen range"
-   button when no match is found; show the best time/score as text under
-   the score bars (tooltips need a long-press on phones); one consistent
-   rain measure on match cards; refresh `README.md`.
-7. **Better product matches** for headlamp/chest light and lit tow float
+4. ~~Time zones~~, ~~honest long periods~~ and ~~the polish list~~ — done
+   11 Nov 2026. Still open from that list: refresh `README.md`.
+5. **Better product matches** for headlamp/chest light and lit tow float
    if real decathlon.nl pages can be found; refresh catalogue prices
    (snapshot dated Oct–Nov 2026).
-8. **Growth, only when the owner asks** (from `reports/`): privacy-
+6. **Growth, only when the owner asks** (from `reports/`): privacy-
    friendly analytics, a landing page and own domain, shareable session
    links, club outreach in Amsterdam.
-9. **Later phases, only when the owner asks** (`CLAUDE.md` section 7,
+7. **Later phases, only when the owner asks** (`CLAUDE.md` section 7,
    "Later phases"): routes, Turkish, real affiliate links, water
    temperature, Strava/Garmin, notifications, Android.
 

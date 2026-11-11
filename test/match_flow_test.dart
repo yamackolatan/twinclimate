@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:twinclimate/theme.dart';
 import 'package:twinclimate/logic/fingerprint_builder.dart';
 import 'package:twinclimate/models/matching.dart';
 import 'package:twinclimate/models/place.dart';
@@ -101,6 +102,40 @@ class FakeMatchWeather extends FakeRaceWeather {
     required DateTime firstDay,
     required DateTime lastDay,
   }) async => _forecast(place.latitude, place.longitude, firstDay, lastDay);
+}
+
+/// Like [FakeMatchWeather] but 15 °C colder everywhere.
+class ColdMatchWeather extends FakeMatchWeather {
+  @override
+  Future<List<SpotForecast>> fetchHourlyMany({
+    required List<(double, double)> points,
+    required DateTime firstDay,
+    required DateTime lastDay,
+  }) async => [
+    for (final f in await super.fetchHourlyMany(
+      points: points,
+      firstDay: firstDay,
+      lastDay: lastDay,
+    ))
+      SpotForecast(
+        elevationM: f.elevationM,
+        hours: [
+          for (final h in f.hours)
+            HourWeather(
+              time: h.time,
+              temperatureC: h.temperatureC - 15,
+              apparentC: h.apparentC - 15,
+              humidityPercent: h.humidityPercent,
+              precipProbabilityPercent: h.precipProbabilityPercent,
+              precipitationMm: h.precipitationMm,
+              windKmh: h.windKmh,
+              gustKmh: h.gustKmh,
+              weatherCode: h.weatherCode,
+              isDay: h.isDay,
+            ),
+        ],
+      ),
+  ];
 }
 
 class FakeNamer implements PlaceNamer {
@@ -233,6 +268,7 @@ void main() {
     final namer = FakeNamer();
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light(),
         home: MatchResultPage(
           request: request(
             MatchMode.period,
@@ -254,6 +290,75 @@ void main() {
     );
   });
 
+  Future<void> pumpResults(
+    WidgetTester tester,
+    MatchRequest req,
+    PrefsStore store, {
+    FakeMatchWeather? sample,
+  }) async {
+    tester.view.physicalSize = const Size(1000, 4000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final weather = sample ?? FakeMatchWeather();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: MatchResultPage(
+          request: req,
+          store: store,
+          weather: weather,
+          namer: FakeNamer(),
+          matchService: MatchService(weather, clock: () => now),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('a weak match offers to widen the travel range', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final store = await PrefsStore.load();
+    // Much colder than race day everywhere: no close match.
+    await pumpResults(
+      tester,
+      request(MatchMode.specificDate),
+      store,
+      sample: ColdMatchWeather(),
+    );
+    expect(find.textContaining('no close match within 150 km'), findsOneWidget);
+    // The score bars are also explained in words.
+    expect(find.textContaining('scores'), findsNWidgets(5));
+
+    await tester.tap(find.text('Widen range to 300 km'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('within 300 km of Vondelpark'), findsOneWidget);
+    expect(store.matchRangeKm, 300);
+    // Already at the maximum: no button.
+    expect(find.textContaining('Widen range'), findsNothing);
+  });
+
+  testWidgets('a period across the forecast edge marks typical results', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final store = await PrefsStore.load();
+    // Forecast reaches 2 Nov; the period runs 28 Oct – 10 Nov.
+    await pumpResults(
+      tester,
+      request(
+        MatchMode.period,
+        periodStart: DateTime(2026, 10, 28),
+        periodDays: 14,
+      ),
+      store,
+    );
+    expect(
+      find.textContaining('Up to Mon 2 Nov we use the real forecast'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('switch to Match my race, search, see places and time windows', (
     tester,
   ) async {
@@ -270,6 +375,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light(),
         home: QuickSessionPage(store: store, weather: weather, namer: namer),
       ),
     );
@@ -338,6 +444,7 @@ void main() {
     await store.saveRace(kalmarWithFingerprint());
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light(),
         home: QuickSessionPage(
           store: store,
           weather: FakeMatchWeather(),
@@ -390,6 +497,7 @@ void main() {
     await store.saveRace(kalmarWithFingerprint());
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light(),
         home: QuickSessionPage(
           store: store,
           weather: FakeMatchWeather(),
@@ -424,6 +532,7 @@ void main() {
     final store = await PrefsStore.load();
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.light(),
         home: QuickSessionPage(store: store, weather: FakeMatchWeather()),
       ),
     );

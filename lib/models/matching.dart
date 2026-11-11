@@ -148,6 +148,23 @@ class MatchRequest {
   /// spots are assumed to share it.
   final int? homeUtcOffsetSeconds;
 
+  /// The same request with another race (e.g. its climate just computed)
+  /// or travel range.
+  MatchRequest copyWith({Race? race, double? rangeKm}) => MatchRequest(
+    race: race ?? this.race,
+    sport: sport,
+    home: home,
+    distanceKm: distanceKm,
+    rangeKm: rangeKm ?? this.rangeKm,
+    mode: mode,
+    date: date,
+    periodDays: periodDays,
+    periodStart: periodStart,
+    weights: weights,
+    window: window,
+    homeUtcOffsetSeconds: homeUtcOffsetSeconds,
+  );
+
   /// "Now" on the starting point's clock.
   DateTime nowAtHome(DateTime phoneNow) =>
       clockAt(phoneNow, homeUtcOffsetSeconds);
@@ -272,7 +289,9 @@ class SessionConditions {
   final double humidity;
   final double wind;
 
-  /// 0-1: the highest rain probability during the window.
+  /// 0-1 chance of rain during the window: the forecast's highest hourly
+  /// rain chance, or for typical weather the share of past days with at
+  /// least 1 mm in those hours (like the race's rain chance).
   final double rainLikelihood;
 }
 
@@ -302,9 +321,24 @@ class PlaceResult {
     required this.windowLastStart,
     required this.durationMinutes,
     required this.dayScores,
+    this.typical = false,
   });
 
   final Spot spot;
+
+  /// Ranked on typical weather (more than 16 days ahead), not a forecast.
+  final bool typical;
+
+  /// The same result with a named spot.
+  PlaceResult withSpot(Spot newSpot) => PlaceResult(
+    spot: newSpot,
+    best: best,
+    windowFirstStart: windowFirstStart,
+    windowLastStart: windowLastStart,
+    durationMinutes: durationMinutes,
+    dayScores: dayScores,
+    typical: typical,
+  );
   final MatchOption best;
 
   /// Earliest and latest start times on [best]'s day that still score
@@ -330,7 +364,13 @@ class TypicalBasis {
     required this.firstYear,
     required this.lastYear,
     required this.forPeriod,
+    this.forecastUntil,
   });
+
+  /// For a period that starts within the forecast: its last forecast day.
+  /// Days up to it use the real forecast; only later days use typical
+  /// weather.
+  final DateTime? forecastUntil;
 
   /// The date whose typical weather was used (± 5 days); for a period,
   /// its middle day.

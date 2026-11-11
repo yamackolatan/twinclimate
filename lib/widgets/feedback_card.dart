@@ -319,11 +319,19 @@ class _FeedbackCardState extends State<FeedbackCard> {
         const SizedBox(height: 12),
       ],
     Text('Pick one or more.', style: theme.textTheme.bodySmall),
+    const SizedBox(height: 8),
+    // Full width, like "Next" (the app's main buttons are full width).
+    FilledButton(
+      onPressed: _whereComplete ? _finishWhere : null,
+      child: const Text('Done'),
+    ),
     Align(
-      alignment: Alignment.centerRight,
-      child: FilledButton(
-        onPressed: _whereComplete ? _finishWhere : null,
-        child: const Text('Done'),
+      alignment: Alignment.centerLeft,
+      // Back keeps the answers already picked.
+      child: TextButton.icon(
+        onPressed: () => setState(() => _step = _Step.feeling),
+        icon: const Icon(Icons.arrow_back, size: 18),
+        label: const Text('Back'),
       ),
     ),
   ];
@@ -361,12 +369,18 @@ class _FeedbackCardState extends State<FeedbackCard> {
                 _choice(null, 'Something lighter', () => _save(Worn.lighter)),
               ],
       ),
-      Align(
-        alignment: Alignment.centerLeft,
-        child: TextButton(
-          onPressed: () => _save(Worn.unknown),
-          child: const Text('Skip'),
-        ),
+      Row(
+        children: [
+          TextButton.icon(
+            onPressed: () => setState(() => _step = _Step.where),
+            icon: const Icon(Icons.arrow_back, size: 18),
+            label: const Text('Back'),
+          ),
+          TextButton(
+            onPressed: () => _save(Worn.unknown),
+            child: const Text('Skip'),
+          ),
+        ],
       ),
     ];
   }

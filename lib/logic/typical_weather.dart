@@ -138,3 +138,46 @@ Stat typicalFeelsSpread({
       values.length;
   return Stat(m, math.sqrt(variance));
 }
+
+/// How often, in past years, it rained at least 1 mm during [slots]
+/// (local clock hours on [date] or the day after): the share of days
+/// (years × [date] ± [spread]) with that much rain in those hours. This is
+/// the same measure as a race's rain chance, so the two compare directly.
+/// [rainByTime] is recorded rain per hour (local wall-clock stored as UTC,
+/// see [PastHour]). Days missing any of the hours are left out; null when
+/// none are complete.
+double? typicalWetShare({
+  required Map<DateTime, double> rainByTime,
+  required List<int> years,
+  required DateTime date,
+  required List<DateTime> slots,
+  int spread = fingerprintDaySpread,
+}) {
+  var days = 0;
+  var wet = 0;
+  for (final year in years) {
+    for (var d = -spread; d <= spread; d++) {
+      var total = 0.0;
+      var complete = true;
+      for (final slot in slots) {
+        final dayOffset = dayOnly(slot).difference(dayOnly(date)).inDays;
+        final mm =
+            rainByTime[DateTime.utc(
+              year,
+              date.month,
+              date.day + d + dayOffset,
+              slot.hour,
+            )];
+        if (mm == null) {
+          complete = false;
+          break;
+        }
+        total += mm;
+      }
+      if (!complete) continue;
+      days++;
+      if (total >= ConditionStats.wetDayThresholdMm) wet++;
+    }
+  }
+  return days == 0 ? null : wet / days;
+}

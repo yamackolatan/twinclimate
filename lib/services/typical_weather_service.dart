@@ -26,10 +26,30 @@ class TypicalSession {
 /// Typical conditions for one race-matching spot: its ground height and a
 /// typical hour for every clock hour of the day (and the next day).
 class TypicalSpot {
-  const TypicalSpot({required this.elevationM, required this.hours});
+  const TypicalSpot({
+    required this.elevationM,
+    required this.hours,
+    this.rainByTime = const {},
+    this.years = const [],
+    required this.date,
+  });
 
   final double elevationM;
   final List<HourWeather> hours;
+
+  /// Recorded rain per past hour, for [wetShare].
+  final Map<DateTime, double> rainByTime;
+  final List<int> years;
+  final DateTime date;
+
+  /// Share of past days with at least 1 mm of rain during [slots] — the
+  /// race's own rain measure (see [typicalWetShare]).
+  double? wetShare(List<DateTime> slots) => typicalWetShare(
+    rainByTime: rainByTime,
+    years: years,
+    date: date,
+    slots: slots,
+  );
 }
 
 /// Builds "typical weather" from the last 10 years of records when a date
@@ -186,6 +206,11 @@ class TypicalWeatherService {
         for (var i = 0; i < points.length; i++)
           TypicalSpot(
             elevationM: elevations[i],
+            rainByTime: {
+              for (final h in histories[i]) h.time: h.precipitationMm,
+            },
+            years: years,
+            date: day,
             hours: typicalHours(
               history: histories[i],
               years: years,

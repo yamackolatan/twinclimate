@@ -87,19 +87,27 @@ String spotDirection(Spot spot) {
 /// [durationMinutes], from hourly forecast [byHour] (keyed by local hour).
 /// Null if any hour of the window is missing or, with [requireDaylight],
 /// falls after dark.
+///
+/// The rain chance is the forecast's highest hourly rain chance in the
+/// window, unless [rainChance] gives one for the window's clock hours (for
+/// typical weather: how often past days had at least 1 mm then, the
+/// race's own measure).
 SessionConditions? sessionConditions(
   Map<DateTime, HourWeather> byHour,
   DateTime start,
   int durationMinutes, {
   bool requireDaylight = true,
+  RainChance? rainChance,
 }) {
   final end = start.add(Duration(minutes: math.max(durationMinutes, 1)));
   final hours = <HourWeather>[];
+  final slots = <DateTime>[];
   var slot = DateTime(start.year, start.month, start.day, start.hour);
   while (slot.isBefore(end)) {
     final reading = byHour[slot];
     if (reading == null || (requireDaylight && !reading.isDay)) return null;
     hours.add(reading);
+    slots.add(slot);
     slot = slot.add(const Duration(hours: 1));
   }
   // Must also finish before dark, judged at the hour nearest the finish.
@@ -118,9 +126,13 @@ SessionConditions? sessionConditions(
     humidity: mean((h) => h.humidityPercent),
     wind: mean((h) => h.windKmh),
     rainLikelihood:
+        rainChance?.call(slots) ??
         hours.map((h) => h.precipProbabilityPercent).reduce(math.max) / 100,
   );
 }
+
+/// 0–1 chance of rain for a session's clock hours, or null if unknown.
+typedef RainChance = double? Function(List<DateTime> slots);
 
 /// How alike [c] is to the race [target], 0-100.
 ///
@@ -158,6 +170,8 @@ PlaceResult? bestForSpot({
   required MatchWeights weights,
   required TrainingWindow window,
   DateTime? notBefore,
+  RainChance? rainChance,
+  bool typical = false,
 }) {
   PlaceResult? best;
   for (final day in days) {
@@ -174,6 +188,7 @@ PlaceResult? bestForSpot({
         start,
         durationMinutes,
         requireDaylight: window.daylightOnly,
+        rainChance: rainChance,
       );
       if (conditions == null) continue;
       options.add(
@@ -185,7 +200,7 @@ PlaceResult? bestForSpot({
       );
     }
     if (options.isEmpty) continue;
-    final dayResult = _dayResult(spot, options, durationMinutes);
+    final dayResult = _dayResult(spot, options, durationMinutes, typical);
     if (best == null || dayResult.best.score > best.best.score) {
       best = dayResult;
     }
@@ -200,6 +215,7 @@ PlaceResult _dayResult(
   Spot spot,
   List<MatchOption> options,
   int durationMinutes,
+  bool typical,
 ) {
   var bestIndex = 0;
   for (var i = 1; i < options.length; i++) {
@@ -230,6 +246,7 @@ PlaceResult _dayResult(
     windowLastStart: options[last].start,
     durationMinutes: durationMinutes,
     dayScores: options,
+    typical: typical,
   );
 }
 

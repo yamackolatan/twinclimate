@@ -99,6 +99,59 @@ void main() {
     });
   });
 
+  group('typical rain uses the race\'s own measure', () {
+    // Rain per hour, 20 Mar ± 1 day, 08:00 and 09:00, 2024 and 2025.
+    // Only 20 Mar 2024 has 0.6 + 0.6 = 1.2 mm in those hours.
+    final rain = <DateTime, double>{
+      for (final year in [2024, 2025])
+        for (var d = -1; d <= 1; d++)
+          for (final h in [8, 9])
+            DateTime.utc(year, 3, 20 + d, h): year == 2024 && d == 0 ? 0.6 : 0,
+    };
+    final date = DateTime(2027, 3, 20);
+    List<DateTime> slots(List<int> hours) => [
+      for (final h in hours) DateTime(2027, 3, 20, h),
+    ];
+
+    test('share of past days with at least 1 mm in the session hours', () {
+      // 1 wet day out of 6.
+      expect(
+        typicalWetShare(
+          rainByTime: rain,
+          years: [2024, 2025],
+          date: date,
+          slots: slots([8, 9]),
+          spread: 1,
+        ),
+        closeTo(1 / 6, 1e-9),
+      );
+      // One hour alone is only 0.6 mm: not a wet day.
+      expect(
+        typicalWetShare(
+          rainByTime: rain,
+          years: [2024, 2025],
+          date: date,
+          slots: slots([8]),
+          spread: 1,
+        ),
+        0,
+      );
+    });
+
+    test('days with missing hours are left out', () {
+      expect(
+        typicalWetShare(
+          rainByTime: rain,
+          years: [2024, 2025],
+          date: date,
+          slots: slots([8, 9, 10]),
+          spread: 1,
+        ),
+        isNull,
+      );
+    });
+  });
+
   test('service: one request per year for a session, last 10 years', () async {
     final fake = FakeHistoryService();
     final start = DateTime(2027, 3, 20, 8);
@@ -182,6 +235,57 @@ void main() {
           );
       expect(result.typical!.forPeriod, isTrue);
       expect(result.typical!.date, DateTime(2027, 1, 13));
+    });
+
+    test(
+      'a period crossing the forecast edge uses the forecast first',
+      () async {
+        // Forecast reaches 2 Nov; the period runs 28 Oct – 10 Nov.
+        final weather = FakeMatchWeather();
+        final result = await MatchService(weather, clock: () => now).run(
+          request(
+            MatchMode.period,
+            now,
+            periodStart: DateTime(2026, 10, 28),
+            periodDays: 14,
+          ),
+        );
+        expect(weather.manyCalls, isNotEmpty); // real forecast for 28 Oct–2 Nov
+        expect(weather.manyHistoryCalls, hasLength(10)); // history for later
+        final basis = result.typical!;
+        expect(basis.forecastUntil, DateTime(2026, 11, 2));
+        // Typical weather around the middle of 3–10 Nov only.
+        expect(basis.date, DateTime(2026, 11, 7));
+        expect(result.results, isNotEmpty);
+        for (final r in result.results) {
+          final day = DateTime(
+            r.best.start.year,
+            r.best.start.month,
+            r.best.start.day,
+          );
+          if (r.typical) {
+            expect(day, DateTime(2026, 11, 7));
+          } else {
+            expect(day.isBefore(DateTime(2026, 10, 28)), isFalse);
+            expect(day.isAfter(DateTime(2026, 11, 2)), isFalse);
+          }
+        }
+      },
+    );
+
+    test('a period entirely past the forecast needs no forecast', () async {
+      final weather = FakeMatchWeather();
+      final result = await MatchService(weather, clock: () => now).run(
+        request(
+          MatchMode.period,
+          now,
+          periodStart: DateTime(2027, 2, 10),
+          periodDays: 7,
+        ),
+      );
+      expect(weather.manyCalls, isEmpty);
+      expect(result.typical!.forecastUntil, isNull);
+      expect(result.results.every((r) => r.typical), isTrue);
     });
 
     test('within the forecast nothing changes', () async {

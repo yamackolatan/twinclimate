@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../logic/place_time.dart';
 import '../logic/best_time.dart';
 import '../logic/gear_engine.dart';
 import '../logic/share_text.dart';
@@ -55,7 +56,11 @@ class _SessionResultPageState extends State<SessionResultPage> {
   /// The whole day's forecast, for the "better time" hint.
   List<HourWeather> _dayHours = const [];
 
-  bool get _isTypical => beyondForecast(widget.plan.start, DateTime.now());
+  /// "Now" on the place's clock (it may be in another time zone).
+  DateTime get _now =>
+      clockAt(DateTime.now(), widget.plan.place.utcOffsetSeconds);
+
+  bool get _isTypical => beyondForecast(widget.plan.start, _now);
 
   @override
   void initState() {
@@ -126,6 +131,7 @@ class _SessionResultPageState extends State<SessionResultPage> {
         end: plan.end,
         forecastFeelsC: forecast.meanApparentC,
         suggested: mainSuggestions(kit),
+        utcOffsetSeconds: plan.place.utcOffsetSeconds,
       ),
     );
   }
@@ -319,7 +325,7 @@ class _SessionResultPageState extends State<SessionResultPage> {
     final scheme = Theme.of(context).colorScheme;
     final shopItems = _shopItems(kit);
     _shown = forecast;
-    final now = DateTime.now();
+    final now = _now;
     final canGoEarlier = plan.start
         .subtract(const Duration(hours: 1))
         .isAfter(now.subtract(const Duration(minutes: 30)));
@@ -541,11 +547,7 @@ class _SessionResultPageState extends State<SessionResultPage> {
   }
 
   Widget _betterTimeHint(BuildContext context, SessionForecast forecast) {
-    final better = betterTime(
-      plan: widget.plan,
-      day: _dayHours,
-      now: DateTime.now(),
-    );
+    final better = betterTime(plan: widget.plan, day: _dayHours, now: _now);
     if (better == null) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
     return Padding(

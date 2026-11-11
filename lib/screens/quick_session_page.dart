@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../logic/feedback_logic.dart';
 import '../logic/match_engine.dart';
+import '../logic/place_time.dart';
 import '../logic/typical_weather.dart';
 import '../models/comfort.dart';
 import '../models/matching.dart';
@@ -97,17 +98,71 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     super.initState();
     final (hour, minute) = widget.store.lastStartTime;
     _time = TimeOfDay(hour: hour, minute: minute);
-    // Today if the usual start time is still ahead, otherwise tomorrow.
-    final now = DateTime.now();
-    final todayAtTime = DateTime(now.year, now.month, now.day, hour, minute);
-    _date = todayAtTime.isAfter(now.add(const Duration(minutes: 30)))
-        ? DateTime(now.year, now.month, now.day)
-        : DateTime(now.year, now.month, now.day + 1);
     // Ready to answer on the first visit: last place used, else the first
     // quick pick.
     final saved = widget.store.savedPlaces;
     _place = saved.isNotEmpty ? saved.first : presetPlaces.first;
+    _date = _defaultDate();
+    _learnOffset();
     _refreshFeedback();
+  }
+
+  /// Today if the usual start time is still ahead at the place, otherwise
+  /// tomorrow.
+  DateTime _defaultDate() {
+    final now = _placeNow;
+    final todayAtTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      _time.hour,
+      _time.minute,
+    );
+    return todayAtTime.isAfter(now.add(const Duration(minutes: 30)))
+        ? DateTime(now.year, now.month, now.day)
+        : DateTime(now.year, now.month, now.day + 1);
+  }
+
+  /// The user picked a date or time; stop adjusting the default.
+  bool _dateTouched = false;
+
+  /// UTC offsets learned this visit, by spot (time zones; summer time can
+  /// change between visits, so they're looked up again next visit).
+  static final Map<String, int> _offsets = {};
+
+  static String _spotKey(Place p) =>
+      '${p.latitude.toStringAsFixed(2)},${p.longitude.toStringAsFixed(2)}';
+
+  /// The chosen place's UTC offset, if known.
+  int? get _offset => _place == null
+      ? null
+      : _offsets[_spotKey(_place!)] ?? _place!.utcOffsetSeconds;
+
+  /// "Now" on the chosen place's clock (it may be in another time zone).
+  DateTime get _placeNow => clockAt(DateTime.now(), _offset);
+
+  void _setPlace(Place place) {
+    setState(() => _place = place);
+    _learnOffset();
+  }
+
+  /// Asks the weather service for the place's time zone once per visit.
+  Future<void> _learnOffset() async {
+    final place = _place;
+    if (place == null || _offsets.containsKey(_spotKey(place))) return;
+    try {
+      final offset = await widget.weather.fetchUtcOffsetSeconds(
+        place.latitude,
+        place.longitude,
+      );
+      _offsets[_spotKey(place)] = offset;
+    } catch (_) {
+      return; // Unknown: the phone's own clock is used.
+    }
+    if (!mounted) return;
+    setState(() {
+      if (!_dateTouched) _date = _defaultDate();
+    });
   }
 
   /// The finished session to ask "How did it feel?" about (F4), if any.
@@ -163,7 +218,7 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
       ? null
       : SessionPlan(
           sport: _sport,
-          place: _place!,
+          place: _place!.withUtcOffset(_offset),
           start: _start,
           distanceKm: _distanceKm[_sport]!,
           paceHoursPerKm: _pace[_sport],
@@ -177,12 +232,11 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
       savedPlaces: widget.store.savedPlaces,
       namer: widget.namer,
     );
-    if (place != null) setState(() => _place = place);
+    if (place != null) _setPlace(place);
   }
 
   Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final today = _today;
     final picked = await showDatePicker(
       context: context,
       initialDate: _date.isBefore(today) ? today : _date,
@@ -191,12 +245,17 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
       // weather from the last 10 years, so a year ahead is allowed.
       lastDate: today.add(const Duration(days: 365)),
     );
-    if (picked != null) setState(() => _date = picked);
+    if (picked != null) {
+      setState(() {
+        _date = picked;
+        _dateTouched = true;
+      });
+    }
   }
 
   /// "Now": today, starting at the next quarter hour.
   void _setNow() {
-    final now = DateTime.now().add(const Duration(minutes: 14));
+    final now = _placeNow.add(const Duration(minutes: 14));
     final start = DateTime(
       now.year,
       now.month,
@@ -207,6 +266,7 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
     setState(() {
       _date = DateTime(start.year, start.month, start.day);
       _time = TimeOfDay(hour: start.hour, minute: start.minute);
+      _dateTouched = true;
     });
   }
 
@@ -229,13 +289,18 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
         ChoiceChip(
           label: const Text('Today'),
           selected: _isDay(0),
-          onSelected: (_) => setState(() => _date = _today),
+          onSelected: (_) => setState(() {
+            _date = _today;
+            _dateTouched = true;
+          }),
         ),
         ChoiceChip(
           label: const Text('Tomorrow'),
           selected: _isDay(1),
-          onSelected: (_) =>
-              setState(() => _date = _today.add(const Duration(days: 1))),
+          onSelected: (_) => setState(() {
+            _date = _today.add(const Duration(days: 1));
+            _dateTouched = true;
+          }),
         ),
         ChoiceChip(
           avatar: const Icon(Icons.calendar_today, size: 18),
@@ -249,7 +314,7 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
 
   /// The chosen start is already over (today, earlier than now).
   bool get _startPassed =>
-      _start.isBefore(DateTime.now().subtract(const Duration(minutes: 30)));
+      _start.isBefore(_placeNow.subtract(const Duration(minutes: 30)));
 
   Future<void> _pickPace() async {
     final choices = paceChoices(_sport);
@@ -323,7 +388,12 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
 
   Future<void> _pickTime() async {
     final picked = await showTimePicker(context: context, initialTime: _time);
-    if (picked != null) setState(() => _time = picked);
+    if (picked != null) {
+      setState(() {
+        _time = picked;
+        _dateTouched = true;
+      });
+    }
   }
 
   Future<void> _go() async {
@@ -341,6 +411,7 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
           weather: widget.weather,
           store: widget.store,
           onPlanChanged: (moved) => setState(() {
+            _dateTouched = true;
             _date = DateTime(
               moved.start.year,
               moved.start.month,
@@ -383,6 +454,7 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
               latitude: place.latitude,
               longitude: place.longitude,
             ),
+            homeUtcOffsetSeconds: _offset,
             distanceKm: _distanceKm[_sport]!,
             rangeKm: _rangeKm,
             mode: _mode,
@@ -581,8 +653,7 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                                       : const Icon(Icons.history, size: 18),
                                   selected:
                                       _place != null && _place!.sameSpot(place),
-                                  onSelected: (_) =>
-                                      setState(() => _place = place),
+                                  onSelected: (_) => _setPlace(place),
                                 ),
                             ],
                           ),
@@ -618,7 +689,12 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
                         ),
                       ),
                   ],
-                  if (!matching && beyondForecast(_date, DateTime.now()))
+                  if (!matching && _timeNote != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(_timeNote!, style: muted),
+                    ),
+                  if (!matching && beyondForecast(_date, _placeNow))
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(_typicalNote(_date), style: muted),
@@ -859,7 +935,7 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
       _mode == MatchMode.specificDate
           ? 'We\'ll find the best places and the best time window that '
                 'day, within your training hours.'
-                '${beyondForecast(_date, DateTime.now()) ? ' ${_typicalNote(_date)}' : ''}'
+                '${beyondForecast(_date, _placeNow) ? ' ${_typicalNote(_date)}' : ''}'
           : 'We\'ll find the best day, place and time window, within your '
                 'training hours. Up to ${formatDay(_lastForecastDay)} we use '
                 'the forecast; further ahead (up to a year), typical weather '
@@ -909,9 +985,14 @@ class _QuickSessionPageState extends State<QuickSessionPage> {
   ];
 
   DateTime get _today {
-    final now = DateTime.now();
+    final now = _placeNow;
     return DateTime(now.year, now.month, now.day);
   }
+
+  /// "Times are local time in Kalmar (1 h ahead of you)."
+  String? get _timeNote => _place == null
+      ? null
+      : timeDifferenceNote(_place!.name, _offset, DateTime.now());
 
   /// Open-Meteo forecasts reach 16 days: today + 15.
   DateTime get _lastForecastDay => _today.add(const Duration(days: 15));

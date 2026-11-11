@@ -59,6 +59,7 @@ class SessionRecord {
     this.packed = const {},
     this.allPacked = false,
     this.status = SessionStatus.pending,
+    this.utcOffsetSeconds,
   });
 
   /// Same sport, spot and start time → same id (reopening replaces it).
@@ -84,6 +85,10 @@ class SessionRecord {
   final bool allPacked;
 
   final SessionStatus status;
+
+  /// The place's UTC offset when planned (null = phone's time zone), so
+  /// "has this session finished?" is judged on the place's clock.
+  final int? utcOffsetSeconds;
 
   static String idFor(Sport sport, double lat, double lon, DateTime start) =>
       '${sport.name}|${lat.toStringAsFixed(3)}|${lon.toStringAsFixed(3)}|'
@@ -115,6 +120,7 @@ class SessionRecord {
     packed: packed ?? this.packed,
     allPacked: allPacked ?? this.allPacked,
     status: status ?? this.status,
+    utcOffsetSeconds: utcOffsetSeconds,
   );
 
   factory SessionRecord.fromJson(Map<String, dynamic> json) => SessionRecord(
@@ -133,6 +139,7 @@ class SessionRecord {
     packed: {for (final p in json['packed'] as List) p as String},
     allPacked: json['allPacked'] as bool,
     status: SessionStatus.values.byName(json['status'] as String),
+    utcOffsetSeconds: (json['utcOffsetSeconds'] as num?)?.toInt(),
   );
 
   Map<String, dynamic> toJson() => {
@@ -148,6 +155,7 @@ class SessionRecord {
     'packed': packed.toList(),
     'allPacked': allPacked,
     'status': status.name,
+    if (utcOffsetSeconds != null) 'utcOffsetSeconds': utcOffsetSeconds,
   };
 }
 

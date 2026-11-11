@@ -1,3 +1,4 @@
+import '../logic/place_time.dart';
 import 'fingerprint.dart';
 import 'race.dart';
 import 'session.dart';
@@ -138,9 +139,18 @@ class MatchRequest {
     this.periodStart,
     required this.weights,
     this.window = const TrainingWindow(),
+    this.homeUtcOffsetSeconds,
   });
 
   final Race race;
+
+  /// The starting point's UTC offset (null = phone's time zone). Nearby
+  /// spots are assumed to share it.
+  final int? homeUtcOffsetSeconds;
+
+  /// "Now" on the starting point's clock.
+  DateTime nowAtHome(DateTime phoneNow) =>
+      clockAt(phoneNow, homeUtcOffsetSeconds);
 
   /// The training sport; picks which race leg to match.
   final Sport sport;
@@ -164,7 +174,7 @@ class MatchRequest {
 
   /// Last day of the period (inclusive).
   DateTime get periodEnd {
-    final now = DateTime.now();
+    final now = nowAtHome(DateTime.now());
     final start = periodStart ?? DateTime(now.year, now.month, now.day);
     return DateTime(start.year, start.month, start.day + periodDays - 1);
   }

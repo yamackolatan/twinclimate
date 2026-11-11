@@ -114,6 +114,7 @@ class _MatchResultPageState extends State<MatchResultPage> {
       periodStart: _request.periodStart,
       weights: _request.weights,
       window: _request.window,
+      homeUtcOffsetSeconds: _request.homeUtcOffsetSeconds,
     );
   }
 
@@ -154,6 +155,7 @@ class _MatchResultPageState extends State<MatchResultPage> {
       country: '',
       latitude: r.spot.latitude,
       longitude: r.spot.longitude,
+      utcOffsetSeconds: _request.homeUtcOffsetSeconds,
     );
     Navigator.of(context).push(
       MaterialPageRoute(

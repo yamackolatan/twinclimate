@@ -9,6 +9,7 @@ class Place {
     required this.latitude,
     required this.longitude,
     this.isPreset = false,
+    this.utcOffsetSeconds,
   });
 
   final String name;
@@ -25,6 +26,22 @@ class Place {
   /// True for the spots bundled with the app (shown as quick picks).
   final bool isPreset;
 
+  /// The place's current offset from UTC (time zone incl. summer time),
+  /// once the weather service has told us; null = not known yet, treated
+  /// as the phone's own time zone.
+  final int? utcOffsetSeconds;
+
+  /// The same place with its UTC offset filled in.
+  Place withUtcOffset(int? offsetSeconds) => Place(
+    name: name,
+    region: region,
+    country: country,
+    latitude: latitude,
+    longitude: longitude,
+    isPreset: isPreset,
+    utcOffsetSeconds: offsetSeconds,
+  );
+
   String get subtitle =>
       [region, country].where((part) => part.isNotEmpty).join(', ');
 
@@ -40,6 +57,7 @@ class Place {
     country: json['country'] as String? ?? '',
     latitude: (json['latitude'] as num).toDouble(),
     longitude: (json['longitude'] as num).toDouble(),
+    utcOffsetSeconds: (json['utcOffsetSeconds'] as num?)?.toInt(),
   );
 
   Map<String, dynamic> toJson() => {
@@ -48,6 +66,7 @@ class Place {
     'country': country,
     'latitude': latitude,
     'longitude': longitude,
+    if (utcOffsetSeconds != null) 'utcOffsetSeconds': utcOffsetSeconds,
   };
 
   static String encodeList(List<Place> places) =>

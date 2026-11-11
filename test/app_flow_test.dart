@@ -9,6 +9,13 @@ import 'package:twinclimate/services/weather_service.dart';
 
 /// Canned weather so the flow can be tested without the network.
 class FakeWeatherService implements WeatherService {
+  /// Places keep the phone's time zone unless a test says otherwise.
+  int? utcOffsetSeconds;
+
+  @override
+  Future<int> fetchUtcOffsetSeconds(double latitude, double longitude) async =>
+      utcOffsetSeconds ?? DateTime.now().timeZoneOffset.inSeconds;
+
   @override
   Future<List<Place>> searchPlaces(String query) async => const [
     Place(

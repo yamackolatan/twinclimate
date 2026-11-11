@@ -1,6 +1,7 @@
 import '../models/comfort.dart';
 import '../models/gear.dart';
 import 'gear_engine.dart';
+import 'place_time.dart';
 
 /// How long after a session ends the feedback card keeps asking.
 const Duration feedbackWindow = Duration(days: 3);
@@ -25,14 +26,22 @@ class FeedbackPick {
 /// [feedbackWindow], and only while it's still unanswered — so browsing
 /// several plans never piles up questions. Once the profile is stable for
 /// that sport and zone, only every third such session is asked about.
+/// [now] is the phone's clock; each session is compared with the time at
+/// its own place.
 FeedbackPick pickSessionToAsk(
   List<SessionRecord> records,
   ComfortProfile profile,
   DateTime now,
 ) {
+  // Each session is judged on its own place's clock (time zones).
+  bool isFinished(SessionRecord r) {
+    final at = clockAt(now, r.utcOffsetSeconds);
+    return !r.end.isAfter(at) && at.difference(r.end) <= feedbackWindow;
+  }
+
   final finished = [
     for (final r in records)
-      if (!r.end.isAfter(now) && now.difference(r.end) <= feedbackWindow) r,
+      if (isFinished(r)) r,
   ]..sort((a, b) => b.end.compareTo(a.end));
   if (finished.isEmpty) return const FeedbackPick();
   final latest = finished.first;

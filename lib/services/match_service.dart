@@ -41,7 +41,8 @@ class MatchService {
       '${request.home.name}…',
     );
 
-    final now = _clock();
+    // Judged on the starting point's clock (it may be in another time zone).
+    final now = request.nowAtHome(_clock());
     final today = dayOnly(now);
     final lastDayOfForecast = lastForecastDay(now);
     final requested = switch (request.mode) {

@@ -10,6 +10,10 @@ import '../models/weather.dart';
 abstract class WeatherService {
   Future<List<Place>> searchPlaces(String query);
 
+  /// The place's current offset from UTC in seconds (its time zone,
+  /// including summer time), so "now" can be judged on the place's clock.
+  Future<int> fetchUtcOffsetSeconds(double latitude, double longitude);
+
   /// Hourly forecast for [place], from [firstDay] through [lastDay]
   /// (inclusive), in the place's local time.
   Future<List<HourWeather>> fetchHourly({
@@ -105,6 +109,24 @@ class OpenMeteoWeatherService implements WeatherService {
           longitude: (raw['longitude'] as num).toDouble(),
         ),
     ];
+  }
+
+  @override
+  Future<int> fetchUtcOffsetSeconds(double latitude, double longitude) async {
+    // The smallest possible forecast request: one current value.
+    final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
+      'latitude': latitude.toStringAsFixed(4),
+      'longitude': longitude.toStringAsFixed(4),
+      'current': 'is_day',
+      'timezone': 'auto',
+      'forecast_days': '1',
+    });
+    final json = await _getJson(uri, 'local time');
+    final offset = json['utc_offset_seconds'];
+    if (offset is! num) {
+      throw WeatherServiceException('The local time could not be found.');
+    }
+    return offset.toInt();
   }
 
   @override

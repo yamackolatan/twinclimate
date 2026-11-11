@@ -44,6 +44,13 @@ List<PastHour> fakeHistory(DateTime firstDay, DateTime lastDay) {
 }
 
 class FakeHistoryService implements WeatherService {
+  /// Places keep the phone's time zone unless a test says otherwise.
+  int? utcOffsetSeconds;
+
+  @override
+  Future<int> fetchUtcOffsetSeconds(double latitude, double longitude) async =>
+      utcOffsetSeconds ?? DateTime.now().timeZoneOffset.inSeconds;
+
   final requests = <(DateTime, DateTime)>[];
 
   @override

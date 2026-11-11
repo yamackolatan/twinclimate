@@ -85,5 +85,6 @@ python3 -m http.server 8080 -d build/web
 Requires the [Flutter SDK](https://docs.flutter.dev/get-started/install)
 (stable channel, 3.44+).
 
-Product decisions, feature specs and the build order live in
-[CLAUDE.md](CLAUDE.md).
+Product rules, tech stack, folder structure and how to run and test:
+[CLAUDE.md](CLAUDE.md). Current state, decisions and next steps:
+[PROGRESS.md](PROGRESS.md).

@@ -1,30 +1,43 @@
-# CLAUDE.md — Complete project briefing for Claude Code
+# CLAUDE.md — permanent project briefing for TwinClimate
 # READ THIS FULLY BEFORE WRITING OR CHANGING ANY CODE.
+# Then read PROGRESS.md for the current state and the next steps.
+
+This file holds what stays true: what the product is, how it is built, how
+to run and test it, the rules, and the feature specifications. **What has
+been done, what is unfinished and what to do next lives in `PROGRESS.md`** —
+update that file at the end of every session.
 
 ## 0. How to work with the owner (most important section)
 
-- The owner, Yamac, is **non-technical**. He directs in plain language; you do
-  ALL coding, setup, running, testing, and debugging.
-- Explain what you're doing in simple terms. Never assume he reads code.
-  When he must act (clicking something, approving a dialog), give exact,
-  numbered steps.
-- The owner mostly works **in a web browser** (cloud Claude Code sessions,
-  code hosted on GitHub). Since Nov 2026 he also has a **Mac laptop** (Xcode
-  can be installed for iPhone builds), but keep every step doable without
-  it. The app MUST always be runnable as a **Flutter web preview** he can
-  open in his browser. Never break web support. Phone builds come later
-  via a cloud build service (Codemagic), not via a local machine.
+- The owner, **Yamac**, is **non-technical**. He directs in plain language;
+  you do ALL coding, setup, running, testing and debugging.
+- Explain what you are doing in simple terms. Never assume he reads code.
+  When he must act (click something, approve a dialog, sign up somewhere),
+  give exact, numbered steps.
+- He mostly works **in a web browser** (cloud Claude Code sessions, code on
+  GitHub) and looks at the app on the published website. Since Nov 2026 he
+  also has a **Mac laptop** (Xcode can be installed for iPhone builds), but
+  keep every step doable without it. The app MUST always work as a
+  **Flutter web app**. Never break web support.
+- **Standing permission (Nov 2026):** "I confirm every change you want to
+  do, don't ask for my permission." Proceed with changes that follow from
+  his request without asking first; still stop for anything destructive,
+  anything that costs money, and real product decisions (e.g. the app's
+  name). Things only he can do (Apple account, payments, GitHub settings)
+  are written as numbered steps for him.
 - **Do not invent scope or skip scope.** This file is the single source of
-  truth. The full PRD is in `docs/PRD.md`. If the current code does not match
-  this file, the gap is a bug to fix, not a decision to revisit.
-- At the start of every session: briefly audit the codebase against the
-  roadmap (section 6), tell the owner in 3–5 plain sentences what exists,
-  what's missing or broken, and what you propose to do next. Then wait for
-  his go-ahead.
-- Work in small increments. After each feature, run it in the web preview and
-  walk the owner through testing it before moving on.
+  truth for product rules. (There is no `docs/PRD.md`; an older version of
+  this file referred to one that never existed.) If the code does not
+  match this file, that is a bug to fix.
+- At the start of every session: read this file and `PROGRESS.md`, check
+  the repository state, and tell the owner in 3–5 plain sentences what
+  exists, what is unfinished and what you propose next.
+- Work in small increments. After each one: run the checks, look at the
+  result in a browser, publish, and tell him how to try it.
+- Write to him in plain language: lead with the outcome, say honestly what
+  was and was not tested, no jargon.
 
-## 1. What this product is
+## 1. What TwinClimate is
 
 **TwinClimate** (working title) — an app for outdoor athletes (runners,
 cyclists, triathletes, amateur sportspeople) answering two questions:
@@ -74,8 +87,8 @@ cyclists, triathletes, amateur sportspeople) answering two questions:
      fully optional.
 5. **Every gear suggestion shows its reason** ("you run warm above 15°C",
    "wet forest paths").
-6. **Kit list doubles as a packing checklist** with an optional reminder
-   (evening before / morning of session).
+6. **Kit list doubles as a packing checklist.** (The optional reminder was
+   cancelled by the owner in Oct 2026 — do not build it.)
 7. **Forecasts are session-window and coordinate-precise:** hour-by-hour for
    the session hours (e.g. 08:00–10:00) at the exact place coordinates
    (Belgrad Forest ≠ central Istanbul), plus a "feels like at start" line.
@@ -93,31 +106,192 @@ cyclists, triathletes, amateur sportspeople) answering two questions:
     provider (free, keyless). If a key ever becomes necessary, explain to the
     owner exactly what to sign up for.
 
-## 3. Architecture & data sources
+## 3. Tech stack and data sources
 
-- **Client:** Flutter (single codebase: web preview now; Android + iOS later
-  via Codemagic cloud builds). Material 3. Works in light and dark mode.
-- **Weather & geocoding:** Open-Meteo, all keyless:
-  - Forecast API (16-day hourly): temperature_2m, apparent_temperature,
+- **Flutter** (Dart SDK ^3.12.2; Flutter **3.44.2 stable**, the version the
+  website build and Codemagic use). One codebase: **web** (the live site)
+  and **iOS** (App Store build). Android is not set up yet. Material 3,
+  light and dark mode, shared theme in `lib/theme.dart`.
+- **Packages** (`pubspec.yaml`, keep this list small): `http`,
+  `shared_preferences`, `url_launcher`, `web` (browser location + share),
+  `geolocator` and `share_plus` (location + share in the iPhone app),
+  `flutter_localizations` (en_GB: Monday-first calendars, 24-hour clock).
+- **Weather and place search: Open-Meteo**, free and keyless, called
+  straight from the browser/app (no server of our own):
+  - Forecast API (16 days, hourly): temperature_2m, apparent_temperature,
     relative_humidity_2m, precipitation_probability, precipitation,
-    wind_speed_10m, wind_gusts_10m, weather_code. timezone=auto.
+    wind_speed_10m, wind_gusts_10m, weather_code, is_day,
+    shortwave_radiation, wind_direction_10m, uv_index; plus
+    `daily=sunrise,sunset`; `timezone=auto` (times are local to the place).
   - Geocoding API for place search.
-  - Historical/Archive API (ERA5, hourly back decades) for race fingerprints.
-  - Marine API for water temperature (swim, later phase).
-  - Elevation API (route profiles, V2).
-- Keep all provider calls behind a single `WeatherService` interface so the
-  provider stays swappable.
-- **Persistence (MVP):** local on-device only — shared_preferences or similar
-  that works on Flutter web — for: favourites, target race, comfort profile,
-  feedback history, sizes. A backend comes later; do not build one until the
-  roadmap says so.
-- **Caching:** race fingerprints are expensive (10 years × hourly). Compute
-  once per race+date, cache locally, never recompute unless race changes.
-- **Data model rules:** races are optional (a list of 0–3, see F2); sessions exist with or
-  without a race link; gear items always carry a `reason` string; comfort
-  profile stores per-body-part, temperature-banded preferences.
+  - Archive API (ERA5 history) for race fingerprints and "typical weather".
+  - Not used yet: Marine API (water temperature, V3), Elevation API (V2).
+  - Free-tier limits are per internet address: per minute, per hour
+    (~5,000) and per day. A 43-spot request counts as ~43 calls. The free
+    API is for **non-commercial use**: if the app ever earns money, move
+    to their paid API (needs a key) and tell the owner.
+- **Place names: OpenStreetMap Nominatim** reverse geocoding (max 1
+  request/second; the app sends a `TwinClimate/<version>` User-Agent).
+- All weather calls go through the `WeatherService` interface
+  (`lib/services/weather_service.dart`) so the provider stays swappable.
+- **Storage:** on the device only (`shared_preferences`; browser storage
+  on the web) via `lib/services/prefs_store.dart`: places, last-used
+  settings, pace, races with cached fingerprints, comfort profile and
+  feedback, session records, owned gear, shop counters. **No backend, no
+  accounts, no analytics** — do not add any without the owner asking.
+- **Data model rules:** races are optional (0–3); sessions exist with or
+  without a race; every gear item carries a `reason`; the comfort profile
+  is per sport, per body part, per temperature range.
+- Race fingerprints are expensive (10 years of hourly data): compute once
+  per race, cache with the race, recompute only when the race changes.
 
-## 4. Feature specifications with acceptance criteria
+## 4. Folder structure
+
+```
+lib/
+  main.dart            app start, theme, en_GB locale, 24-hour clock
+  app_config.dart      STORE_BUILD switch, shoppingDemo, appVersion
+  theme.dart           AppTheme, feelGradient, pagePadding
+  models/              plain data: place, session (Sport, SessionPlan, pace),
+                       weather, gear, race, fingerprint, matching, comfort,
+                       product
+  logic/               pure logic, no Flutter UI, unit-tested:
+                       gear_engine (kit rules), best_time, weather_text,
+                       share_text, fingerprint_builder/_text,
+                       typical_weather, match_engine/_text, feedback_logic,
+                       shop_logic
+  services/            talks to the outside world: weather_service
+                       (Open-Meteo), fingerprint_service,
+                       typical_weather_service, match_service, place_namer
+                       (OpenStreetMap), prefs_store (device storage),
+                       device_services*.dart (location + share: _web for
+                       the browser, _native for iPhone)
+  screens/             quick_session_page (home: Quick Session + Match my
+                       race forms), session_result_page, race_form_page,
+                       race_detail_page, match_result_page,
+                       comfort_profile_page, my_gear_page,
+                       partner_demo_page, about_page
+  widgets/             hour_cards, kit_checklist, place_search_sheet,
+                       feedback_card, races_section, weights_panel,
+                       product_sheet
+  data/decathlon_catalogue.dart   demo product snapshot (109 products)
+test/                  190 tests: unit tests for all logic + widget "flow"
+                       tests that walk the screens with fake weather
+tool/                  scripts run by hand against REAL weather:
+                       check_real_weather, check_real_matching,
+                       check_typical, print_kit_table (sandbox_proxy is a
+                       helper for cloud sessions)
+web/                   index.html, manifest.json, icons, privacy.html,
+                       support.html (App Store privacy + support URLs)
+ios/                   iPhone project (Info.plist, PrivacyInfo.xcprivacy,
+                       app icons)
+codemagic.yaml         cloud build of the iPhone app → TestFlight
+.github/workflows/deploy-pages.yml   builds and publishes the website
+docs/APP_STORE.md      the owner's step-by-step App Store guide + store texts
+docs/app-store/        icon-1024.png and four 1290×2796 store screenshots
+docs/screenshots/      README screenshots
+reports/, research_notes/   growth research (how to attract users)
+PROGRESS.md            current state, decisions and next steps
+```
+
+## 5. How to run, test and publish
+
+**Flutter is usually NOT installed in a fresh cloud session.** Install the
+same version the builds use (about 1.5 GB download, a few minutes):
+
+```bash
+mkdir -p /tmp/fl && cd /tmp/fl
+curl -sL -o flutter.tar.xz https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.44.2-stable.tar.xz
+tar xf flutter.tar.xz && rm flutter.tar.xz
+git config --global --add safe.directory /tmp/fl/flutter
+F=/tmp/fl/flutter/bin/flutter      # use $F below
+```
+
+**Checks to run before every commit** (all must be clean):
+
+```bash
+$F pub get
+/tmp/fl/flutter/bin/dart format lib test
+$F analyze                                   # must say "No issues found!"
+$F test                                      # all tests must pass
+$F test --dart-define=STORE_BUILD=true test/store_build_test.dart test/app_flow_test.dart
+$F build web --release --no-web-resources-cdn
+```
+
+**Looking at the app in a cloud session.** Cloud sessions cannot reach
+Open-Meteo, the live site or decathlon.nl (blocked by the network proxy).
+To see screens, serve `build/web` locally and drive it with Playwright
+(`/opt/node22/lib/node_modules/playwright`, Chromium at
+`/opt/pw-browsers/chromium-*/chrome-linux/chrome`), intercepting
+`**open-meteo.com**` and `**nominatim**` with canned JSON (a list response
+when `latitude` has several comma-separated values; include
+`daily.sunrise/sunset`). Flutter web draws on a canvas: click by screen
+coordinates, not by text. Always tell the owner that such checks used
+sample weather. On a Mac: `flutter run -d chrome`.
+
+**Publishing the website.** Live at
+**https://yamackolatan.github.io/twinclimate/**. GitHub Pages only accepts
+deployments from the branch **`claude/relaxed-brown-be0mcz`** (an
+environment rule in the repository settings that cannot be changed from a
+session). The workflow runs on pushes to that branch (and `main`), runs
+the tests, builds and deploys in about 2–3 minutes.
+- Do the work on the session's own branch, then publish with
+  `git push origin HEAD:<session-branch> HEAD:claude/relaxed-brown-be0mcz`
+  (fast-forward only; never force-push that branch).
+- Check the result: `gh run list -R yamackolatan/twinclimate -b
+  claude/relaxed-brown-be0mcz -L 1`. If a run is "cancelled", re-run it
+  with `gh run rerun <id> -R yamackolatan/twinclimate`.
+- Add `[skip ci]` to commit messages for docs-only changes.
+- There is no `main` branch yet and pull requests are not used.
+
+**iPhone app.** `codemagic.yaml` (workflow "iOS App Store") builds with
+`--dart-define=STORE_BUILD=true` and uploads to TestFlight; the owner's
+steps are in `docs/APP_STORE.md`. The iPhone build has **never been
+compiled or run** (it needs a Mac); see PROGRESS.md.
+
+**Real-weather checks** (only where Open-Meteo is reachable, e.g. a Mac):
+`dart run tool/check_real_weather.dart`, `tool/check_real_matching.dart`,
+`tool/check_typical.dart`; `tool/print_kit_table.dart` prints the kit for
+every temperature range.
+
+## 6. Rules and conventions
+
+Engineering
+- `flutter analyze` clean and all tests passing before showing anything.
+- Every bug fix and every logic rule gets a test. For a bug fix, check
+  that the test fails without the fix.
+- Pure logic goes in `lib/logic/` (no UI imports) so it is cheap to test.
+- Small, well-named files; the smallest well-maintained packages;
+  everything must keep working on Flutter web.
+- Commit after each working increment with a **plain-English message the
+  owner can understand** (what changed for the user, as a short list).
+- Record every new owner decision in this file (rules/specs) or in
+  PROGRESS.md (state/next steps) in the same commit.
+
+Product
+- Every kit item has a reason. Never invent data: no made-up products,
+  prices, ratings or weather. Label typical weather as "not a forecast".
+- Advice first, commerce second: shop links are small text links, never
+  banners; one switch turns them off.
+- The App Store build must never show the Decathlon demo (see section 7,
+  "iPhone / App Store").
+- European conventions: °C, km, 24-hour clock, weeks start on Monday.
+- Screens: use `pagePadding(context)` for page padding (clears the iPhone
+  home bar), 640 px max content width, cards styled only by `AppTheme`.
+- Privacy promises in `web/privacy.html`, the About screen,
+  `ios/Runner/Info.plist` and `ios/Runner/PrivacyInfo.xcprivacy` must stay
+  true: no accounts, no tracking, location only on "Use my location".
+- decathlon.nl blocks automated reading — do not try to get around it; new
+  catalogue products come from web-search listings of real product pages.
+
+Honesty with the owner
+- Say what was checked with sample weather versus live weather, and what
+  could not be checked at all (iPhone build, real location, share menu).
+
+## 7. Feature specifications with acceptance criteria
+
+These describe how the app must behave. Sections marked "build to these"
+are owner decisions; do not re-open them without him asking.
 
 ### F1 — Quick Session (the foundation; must exist before anything else)
 Inputs: sport (run/bike/swim), place (Open-Meteo search + preset favourites,
@@ -241,8 +415,8 @@ location+time list with scores and honest notes. ACCEPT (flexible): same but
 - **Swim:** air conditions + wind only, with a note to check open-water
   access; water temperature stays in V3.
 - **Period mode:** next 7 or 14 days (default 14), **or "Choose dates"**
-  (owner request, Oct 2026): a calendar range picker limited to today …
-  today + 15 days (the forecast horizon, stated on screen); the results
+  (owner request, Oct 2026): a calendar range picker, up to a year ahead,
+  at most 31 days long (see "Beyond the 16-day forecast"); the results
   summary reads "best day between Sat 24 Oct and Thu 29 Oct".
 - **Training hours are the user's choice** (owner decision, Oct 2026): the
   form asks "When can you train?" — earliest start and latest finish
@@ -364,14 +538,16 @@ Replaced by the two shopping features (F5a, F5b) below.
   when its type has no rated one.
 
 ### Partner demo screen
-- Menu → Partner demo: suggestions shown, opened, clicks to shop, "already
+- Opened by **long-pressing the "TwinClimate" title** on the home screen
+  (not in the menu; hidden in the App Store build): suggestions shown,
+  opened, clicks to shop, "already
   have it", shown → shop rate, most opened needs, most clicked products.
   Counted on the device only; reset button. For pitching to brands.
 - Code: `lib/models/product.dart`, `lib/data/decathlon_catalogue.dart`,
   `lib/logic/shop_logic.dart`, `lib/widgets/product_sheet.dart`,
   `lib/screens/my_gear_page.dart`, `lib/screens/partner_demo_page.dart`;
-  tests in `test/shop_test.dart` (every kit item must be mapped or listed
-  in `noShopItems`).
+  tests in `test/shop_test.dart` (every kit item must lead to at least
+  one catalogue product; `noShopItems` is empty).
 
 ### App review improvements (owner-approved, Nov 2026 — build to these)
 - **Bugs fixed:** packing ticks tracked by item name (survive redraws);
@@ -413,7 +589,8 @@ Replaced by the two shopping features (F5a, F5b) below.
 - iOS project in `ios/` (bundle id `com.yamackolatan.twinclimate`, iPhone
   only, portrait, display name "TwinClimate", version from pubspec
   `1.0.0+N`). Built and uploaded to TestFlight by Codemagic
-  (`codemagic.yaml`, workflow "iOS App Store"); never assume a Mac.
+  (`codemagic.yaml`, workflow "iOS App Store"); the owner's Mac + Xcode is
+  an alternative route.
   Owner setup steps and store texts: `docs/APP_STORE.md`.
 - **Store build = `--dart-define=STORE_BUILD=true`** (`lib/app_config.dart`):
   hides the Decathlon shopping demo (shop links, race-day kit, My gear &
@@ -459,27 +636,9 @@ Replaced by the two shopping features (F5a, F5b) below.
 - V3: real affiliate links / partner feeds, size capture at intent, swim
   water temperature, Strava/Garmin, proactive plan-aware notifications.
 
-## 5. Engineering conventions
-- `flutter analyze` clean before showing anything to the owner.
-- Add widget/unit tests for the gear engine and the similarity scoring (pure
-  logic — cheap to test, costly to get wrong).
-- Small, well-named files; prefer the smallest well-maintained packages;
-  everything must keep working on Flutter web.
-- Commit after each working increment with a plain-English message the owner
-  can understand.
+## 8. Roadmap
 
-## 6. Roadmap order (build strictly in this order)
-1. F1 Quick Session — restore/complete it fully, including the 5-part kit
-   checklist with reasons. **This comes BEFORE any matching work.**
-2. F2 Target race + fingerprint.
-3. F3 Race Matching (fixed-date first, then flexible-period).
-4. F4 Feedback loop + comfort profile.
-5. ~~F5 Packing reminder~~ (cancelled) → F5a Kit shopping, F5b Race-day
-   kit, Partner demo screen.
-Then stop and review with the owner before any V2/V3 work.
-
-## 7. Current state warning
-An earlier session implemented only a city-level climate-similarity feature
-and skipped the foundation. FIRST TASK of the next session: audit the code
-against sections 4 and 6, report the gaps in plain language, then rebuild
-toward F1. Reuse any sound matching code for F3 — but F1 comes first.
+F1–F4, the shopping demo (F5a/F5b), two review rounds and App Store
+preparation are built. **What is open and what comes next is in
+`PROGRESS.md`.** V2/V3 items above are not to be started without the owner
+asking.
